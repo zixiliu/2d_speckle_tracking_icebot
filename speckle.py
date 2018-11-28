@@ -4,8 +4,83 @@ from scipy import ndimage
 import numpy as np
 import sys
 import pdb
+import glob
 
-def find_blob(filename, plotit = False): 
+### Global variables
+dis_thresh = 81
+
+
+
+def helper_save_my_image(filename, ultra_w_circle, processed_w_circle, plotit, ext=None): 
+	if processed_w_circle == None:
+		plt.figure(figsize=(20,8))
+		plt.imshow(ultra_w_circle)
+		plt.title(filename)
+	else:
+		plt.figure(figsize=(20,8))
+		plt.subplot(121)
+		plt.imshow(ultra_w_circle)
+		plt.subplot(122)
+		plt.imshow(processed_w_circle)
+		plt.suptitle(filename)
+	
+	if plotit:
+		plt.show()
+	else: 
+		# pdb.set_trace()
+
+		folder_name = 'img3/'
+
+		if ext == None:
+			if filename[-7] == '_':
+				save_file_name = folder_name+'0'+filename[-6:-4]+'.png'
+			elif filename[-6] == '_':
+				save_file_name = folder_name+'00'+filename[-5:-4]+'.png'
+			else:
+				save_file_name = folder_name+filename[-7:-4]+'.png'
+		else:
+			if filename[-7] == '_':
+				save_file_name = folder_name+'0'+filename[-6:-4]+ext+'.png'
+			elif filename[-6] == '_':
+				save_file_name = folder_name+'00'+filename[-5:-4]+ext+'.png'
+			else:
+				save_file_name = folder_name+filename[-7:-4]+ext+'.png'
+		plt.savefig(save_file_name)
+
+def helper_get_distance_sq(kp1, kp2): 
+	'''Get distance between two keypoints'''
+	(x1, y1) = kp1.pt
+	(x2, y2) = kp2.pt
+	return ((x1-x2)**2 + (y1-y2)**2)
+
+def helper_find_next_speckle(keypoints_frame1, keypoints_frame2):
+	global dis_thresh 
+
+	start_pts = []
+	end_pts = []
+
+	for kp1 in keypoints_frame1:
+		# find points in frame 2 that are close to this point in frame 1
+		close_pts = []
+		for kp2 in keypoints_frame2: 
+			if helper_get_distance_sq(kp1, kp2) <= dis_thresh:
+				close_pts.append(kp2)
+		# find the point withint the closest points of the most similar area
+		area_diff = np.Inf
+		if len(close_pts) > 0:
+			the_pt = close_pts[0]
+			the_dis = np.abs(the_pt.size - kp1.size)
+			for pts in close_pts[1::]:
+				if np.abs(pts.size - kp1.size) < the_dis:
+					the_pt = pts
+
+			start_pts.append(kp1)
+			end_pts.append(the_pt)
+
+	return (start_pts, end_pts)
+
+
+def find_blob(filename, saveit = False, plotit = False): 
 
 	a = cv2.imread(filename)
 	# pdb.set_trace()
@@ -73,8 +148,8 @@ def find_blob(filename, plotit = False):
 	ret,thresh = cv2.threshold(ultra,140,255,0)
 
 
-	thresh = cv2.erode(thresh, None, iterations=2)
-	thresh = cv2.dilate(thresh, None, iterations=2)
+	thresh = cv2.erode(thresh, None, iterations=1)
+	thresh = cv2.dilate(thresh, None, iterations=1)
 
 	ultra8 = (255 - thresh).astype('uint8')
 
@@ -91,28 +166,46 @@ def find_blob(filename, plotit = False):
 	# Draw detected blobs as red circles.
 	# cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
 	im_ori = ultra_ori.copy()
-	im_with_keypoints = cv2.drawKeypoints(im_ori, keypoints, np.array([]), (0,255, 0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-	processed = cv2.drawKeypoints(ultra8, keypoints, np.array([]), (0,255, 0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+	ultra_w_circle = cv2.drawKeypoints(im_ori, keypoints, np.array([]), (0,255, 0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+	processed_w_circle = cv2.drawKeypoints(ultra8, keypoints, np.array([]), (0,255, 0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-	plt.figure(figsize=(20,8))
-	plt.subplot(121)
-	plt.imshow(im_with_keypoints)
-	plt.subplot(122)
-	plt.imshow(processed)
-	plt.suptitle(filename)
+	if saveit:
+		helper_save_my_image(filename, ultra_w_circle, processed_w_circle, plotit)
+
+	# pdb.set_trace()
+
+	return keypoints, ultra_ori
+
+
+def two_frames(file1, file2):
+	keypoints_frame1, ultra1 = find_blob(file1)
+	keypoints_frame2, ultra2 = find_blob(file2)
+
+	(start_pts, end_pts) = helper_find_next_speckle(keypoints_frame1, keypoints_frame2)
+
+
+	im_ori1 = ultra1.copy()
+	ultra_w_circle1 = cv2.drawKeypoints(im_ori1, start_pts, np.array([]), (0,255, 0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 	
-	if plotit:
-		plt.show()
-	else: 
-		# pdb.set_trace()
+	helper_save_my_image(file1, ultra_w_circle1, None, False,'_s')
 
-		folder_name = 'img/'
 
-		if filename[-7] == '_':
-			save_file_name = folder_name+'0'+filename[-6:-3]+'png'
-		elif filename[-6] == '_':
-			save_file_name = folder_name+'00'+filename[-5:-3]+'png'
-		else:
-			save_file_name = folder_name+filename[-7:-3]+'png'
+	im_ori2 = ultra2.copy()
+	ultra_w_circle2 = cv2.drawKeypoints(im_ori2, end_pts, np.array([]), (0,255, 0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+	
+	helper_save_my_image(file2, ultra_w_circle2, None, False,'_e')
 
-		plt.savefig(save_file_name)
+
+def process_frames(file_path):
+
+	files = glob.glob(file_path+"*.jpg")
+	files = sorted(files)
+	file_of_interest = files[0:10]
+
+	for i in range(len(file_of_interest)-1): 
+		this_file = file_of_interest[i]
+		next_file = file_of_interest[i+1]
+
+		two_frames(this_file, next_file)
+
+
