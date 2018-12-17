@@ -8,7 +8,7 @@ import glob
 import os
 ### My functions
 from speckle import find_blob, two_frames, process_frames
-
+import sift
 
 mypath = "/Volumes/GoogleDrive/My Drive/Alperen's Images/Exp 5 The Best Set/20170616_124815718/images/"
 
@@ -39,4 +39,7 @@ file2 = filename
 
 # two_frames(file1, file2)
 # 
-process_frames(mypath)
+# process_frames(mypath)
+
+sift.process_frames(mypath)
+
