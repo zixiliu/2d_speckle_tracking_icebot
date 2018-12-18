@@ -10,21 +10,14 @@ import os
 from speckle import find_blob, two_frames, process_frames
 import sift
 
-mypath = "/Volumes/GoogleDrive/My Drive/Alperen's Images/Exp 5 The Best Set/20170616_124815718/images/"
+# mypath = "/Volumes/GoogleDrive/My Drive/Alperen's Images/Exp 5 The Best Set/20170616_124815718/images/"
+# filename = "/Volumes/GoogleDrive/My Drive/Alperen's Images/Exp 5 The Best Set/20170616_124815718/images/16062017_125258857_600.jpg"
+# filename = "/Volumes/GoogleDrive/My Drive/Alperen's Images/Exp 5 The Best Set/20170616_124815718/images/16062017_125258889_601.jpg"
 
 
-
-filename = "/Volumes/GoogleDrive/My Drive/Alperen's Images/Exp 5 The Best Set/20170616_124815718/images/16062017_125258857_600.jpg"
-# find_blob(filename)
-file1 = filename
-
-filename = "/Volumes/GoogleDrive/My Drive/Alperen's Images/Exp 5 The Best Set/20170616_124815718/images/16062017_125258889_601.jpg"
-# find_blob(filename)
-file2 = filename
-
-# filename = "/Volumes/GoogleDrive/My Drive/Alperen's Images/Exp 5 The Best Set/20170616_124815718/images/16062017_125258925_602.jpg"
-# find_blob(filename)
-
+mypath = "exp5_images/"
+file1 = mypath+"16062017_125258857_600.jpg"
+file2 = mypath+'16062017_125258889_601.jpg'
 
 
 # print(mypath+"*.jpg")
@@ -41,5 +34,6 @@ file2 = filename
 # 
 # process_frames(mypath)
 
-sift.process_frames(mypath)
+sift.process_consecutive_frames(mypath)
+# sift.process_same_frames(mypath)
 

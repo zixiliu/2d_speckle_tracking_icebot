@@ -7,11 +7,9 @@ import glob
 
 
 ## Load Image
-mypath = "/Volumes/GoogleDrive/My Drive/Alperen's Images/Exp 5 The Best Set/20170616_124815718/images/"
-filename = "/Volumes/GoogleDrive/My Drive/Alperen's Images/Exp 5 The Best Set/20170616_124815718/images/16062017_125453973_4050.jpg"
-file1 = filename
-filename = "/Volumes/GoogleDrive/My Drive/Alperen's Images/Exp 5 The Best Set/20170616_124815718/images/16062017_125454009_4051.jpg"
-file2 = filename
+mypath = "exp5_images/"
+file1 = mypath+"16062017_125258857_600.jpg"
+file2 = mypath+'16062017_125258889_601.jpg'
 
 def helper_strip_img_text(filename):
 
@@ -20,9 +18,7 @@ def helper_strip_img_text(filename):
 	imgray = a.copy()
 	imgray = cv.cvtColor(imgray,cv.COLOR_BGR2GRAY)
 
-	######################################
 	### Mask Out Info by Contour
-	######################################
 	imgray_cp = imgray.copy()
 	ret,thresh = cv.threshold(imgray_cp,5,255,0)
 	thresh = cv.erode(thresh, None, iterations=2)
@@ -38,50 +34,122 @@ def helper_strip_img_text(filename):
 	ultra_ori = imgray - other_info
 	return ultra_ori
 
-def print_matching_keypoints(file1, file2, i):
+def helper_getLength(kp1, kp2): 
+	x1, y1 = kp1.pt[0], kp1.pt[1]
+	x2, y2 = kp2.pt[0], kp2.pt[1]
+	return np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
-	print(file1)
 
-	img1 = helper_strip_img_text(file2) # queryImage
-	img2 = helper_strip_img_text(file1) # trainImage
+def is_the_same_kp(kp1, kp2): 
+	if (kp1.pt[0] == kp2.pt[0]) and (kp1.pt[1] == kp2.pt[1]) and (kp1.size == kp2.size):
+		return True
+	else:
+		return False
 
+def helper_find_matches(query_img, train_img, dis_thresh): 
 
 	# Initiate SIFT detector
 	sift = cv.xfeatures2d.SIFT_create()
 	# find the keypoints and descriptors with SIFT
-	kp1, des1 = sift.detectAndCompute(img1,None)
-	kp2, des2 = sift.detectAndCompute(img2,None)
+	kp1s, des1 = sift.detectAndCompute(query_img,None)
+	kp2s, des2 = sift.detectAndCompute(train_img,None)
+	# pdb.set_trace()
 	# BFMatcher with default params
 	bf = cv.BFMatcher()
 	matches = bf.knnMatch(des1,des2, k=2)
+	
+	# pdb.set_trace()
+
 	# Apply ratio test
 	good = []
 	idx_train = []
 	idx_query = []
-
-	for m,n in matches:
-	    if m.distance < 0.75*n.distance:
-	        good.append(m)
-	        idx_train.append(m.trainIdx)
-	        idx_query.append(m.queryIdx)
+	for ms in matches:
+		if ms[0].distance > 0.75* ms[1].distance:
+			distances = []
+			for m in ms: 
+				kp1 = kp1s[m.queryIdx]
+				kp2 = kp2s[m.trainIdx]
+				dis = helper_getLength(kp1, kp2)
+				distances.append(dis)
+			idx = np.argmin(np.array(distances))
+			m = ms[idx]
+		else:
+			m = ms[0]
+		
+		kp1 = kp1s[m.queryIdx]
+		kp2 = kp2s[m.trainIdx]
+		dis = helper_getLength(kp1, kp2)
+		if dis < dis_thresh:	 # 30 for consecutive
+			good.append([m])
+			idx_train.append(m.trainIdx)
+			idx_query.append(m.queryIdx)
 	# cv.drawMatchesKnn expects list of lists as matches.
+	# img3 = cv.drawMatchesKnn(img1,kp1s,img2,kp2s,good, img2, flags=2)
+	# print("Number of matches: ",len(matches),", Number of features: ",  len(good))
 
-	# img3 = cv.drawMatchesKnn(img1,kp1,img2,kp2,good, img2, flags=2)
+	return kp1s, kp2s, idx_train, idx_query
 
-	green = (0, 255, 0)
+	
 
-	img=cv.drawKeypoints(img1,np.array(kp1)[idx_query],img1, color=green,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-	cv.imwrite('sift/sift_keypoints_file'+str(i)+'.jpg',img)
+def print_matching_keypoints(this_file, prev_file, next_file, file_num, foldername, dis_thresh=30):
 
+	print(this_file)
+	prev_img = helper_strip_img_text(prev_file) 
+	this_img = helper_strip_img_text(this_file) 
+	next_img = helper_strip_img_text(next_file) 
+	
+	this_kpts_wrt_prev, prev_kps, idx_train_prev, idx_query_prev = helper_find_matches(this_img, prev_img, dis_thresh=dis_thresh)
 
-	# img=cv.drawKeypoints(img2,np.array(kp2)[idx_train],img2, color =(0, 255, 0), flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-	# cv.imwrite('sift_keypoints_file2.jpg',img)
+	this_kpts_wrt_next, next_kps, idx_train, idx_query_next = helper_find_matches(this_img, next_img, dis_thresh=dis_thresh)
+
+	
+	red = (0,0,255)
+	blue = (255,0,0)
+	green = (0,255,0)
+	light_blue = (255, 255, 0)
+	yellow = (0,255,255)
+	
+	### Plot keypoints in this frame that are matched with the previous frame
+	img=cv.drawKeypoints(this_img,np.array(this_kpts_wrt_prev)[idx_query_prev],this_img, color=light_blue,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+	### Plot keypoints and their matched keypoints in the next frame
+	# img=cv.drawKeypoints(img,np.array(next_kps)[idx_train],this_img, color=(0,255,0),flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+	## Draw a line between this keypoint to it in the next frame
+	for i in range(len(idx_train)):
+		i1 = idx_query_next[i]
+		i2 = idx_train[i]		
+		a = (int(this_kpts_wrt_next[i1].pt[0]), int(this_kpts_wrt_next[i1].pt[1]))
+		b = (int(next_kps[i2].pt[0]), int(next_kps[i2].pt[1]))
+		cv.line(img,a, b,green,1)
+
+	## Draw a line between this keypoint to it in the previous frame
+	for i in range(len(idx_train_prev)):
+		i1 = idx_query_prev[i]
+		i2 = idx_train_prev[i]		
+		a = (int(this_kpts_wrt_prev[i1].pt[0]), int(this_kpts_wrt_prev[i1].pt[1]))
+		b = (int(prev_kps[i2].pt[0]), int(prev_kps[i2].pt[1]))
+		cv.line(img,a, b,light_blue, 1)
+	
+	img=cv.drawKeypoints(img,np.array(this_kpts_wrt_next)[idx_query_next],img, color=green,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+	## Overlapping keypoints
+	overlapping_kps = []
+	# pdb.set_trace()
+	for kp1 in np.array(this_kpts_wrt_next)[idx_query_next]:
+		for kp2 in np.array(this_kpts_wrt_prev)[idx_query_prev]:
+			if is_the_same_kp(kp1, kp2):
+				overlapping_kps.append(kp1)
+				# print("overlap!")
+
+	img=cv.drawKeypoints(img,np.array(overlapping_kps),img, color=green,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+	cv.imwrite(foldername+str(file_num)+'.jpg',img)
+
 
 def print_keypoints(file, i):
-
-
 	print(file)
-
 	img = cv.imread(file)
 	gray= cv.cvtColor(img,cv.COLOR_BGR2GRAY)
 	sift = cv.xfeatures2d.SIFT_create()
@@ -90,18 +158,36 @@ def print_keypoints(file, i):
 	cv.imwrite('sift_kp/'+str(i)+'.jpg',img)
 
 
-
-
-def process_frames(file_path):
+def process_consecutive_frames(file_path):
 
 	files = glob.glob(file_path+"*.jpg")
 	files = sorted(files)
-	start_idx = 4050
+	start_idx = 0
 	file_of_interest = files[start_idx:start_idx+30]
+	# pdb.set_trace()
 
-	for i in range(len(file_of_interest)-1):
+	foldername = 'sift/'
+
+	for i in range(1, len(file_of_interest)-1):
+		prev_file = file_of_interest[i-1]
 		this_file = file_of_interest[i]
 		next_file = file_of_interest[i+1]
 
-		# print_matching_keypoints(this_file, next_file, i)
-		print_keypoints(this_file,i+start_idx)
+		print_matching_keypoints(this_file, prev_file, next_file,  i+4050,foldername, dis_thresh=20)
+		# print_keypoints(this_file,i+start_idx)
+
+def process_same_frames(file_path):
+
+	files = glob.glob(file_path+"*.jpg")
+	files = sorted(files)
+	#start_idx = 0
+	file_of_interest = [int(round(x)) for x in np.arange(0, len(files), 18.46)]
+
+	foldername = 'sift_same/'
+
+	for i in range(1, len(file_of_interest)-1):
+		prev_file = files[file_of_interest[i-1]]
+		this_file = files[file_of_interest[i]]
+		next_file = files[file_of_interest[i+1]]
+		print_matching_keypoints(this_file, prev_file, next_file,  this_file[-8:-3], foldername, dis_thresh=10)
+		# print_keypoints(this_file,i+start_idx)
