@@ -32,8 +32,14 @@ file2 = mypath+'16062017_125258889_601.jpg'
 
 # two_frames(file1, file2)
 # 
-# process_frames(mypath)
+process_frames(mypath)
+# diff_path = "diff/"
+# process_frames(diff_path)
 
-sift.process_consecutive_frames(mypath)
+dilation_path = 'dilation/'
+sift.process_consecutive_frames(dilation_path)
+# sift.process_consecutive_frames(mypath)
 # sift.process_same_frames(mypath)
 
+# diff_path = "diff/"
+# sift.process_consecutive_frames(diff_path)

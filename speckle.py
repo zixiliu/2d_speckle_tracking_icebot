@@ -46,6 +46,8 @@ def helper_save_my_image(filename, ultra_w_circle, processed_w_circle, plotit, e
 			else:
 				save_file_name = folder_name+filename[-7:-4]+ext+'.png'
 		plt.savefig(save_file_name)
+		# pdb.set_trace()
+		# plt.savefig("speckle_diff/"+filename[-8::])
 
 def helper_get_distance_sq(kp1, kp2):
 	'''Get distance between two keypoints'''
@@ -148,8 +150,10 @@ def find_blob(filename, saveit = False, plotit = False):
 	ret,thresh = cv2.threshold(ultra,140,255,0)
 
 
-	thresh = cv2.erode(thresh, None, iterations=1)
-	thresh = cv2.dilate(thresh, None, iterations=1)
+	# thresh = cv2.erode(thresh, None, iterations=1)
+	thresh = cv2.dilate(thresh, None, iterations=2)
+
+	plt.imsave('dilation/'+filename[-8::], thresh)
 
 	ultra8 = (255 - thresh).astype('uint8')
 
@@ -227,7 +231,7 @@ def process_frames(file_path):
 
 	files = glob.glob(file_path+"*.jpg")
 	files = sorted(files)
-	file_of_interest = files[0:100]
+	file_of_interest = files[0:30]
 
 	for i in range(1, len(file_of_interest)-1):
 		prev_file = file_of_interest[i-1]

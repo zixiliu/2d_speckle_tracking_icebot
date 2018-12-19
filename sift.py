@@ -1,9 +1,11 @@
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import sys
 import pdb
 import glob
+
 
 
 ## Load Image
@@ -33,6 +35,7 @@ def helper_strip_img_text(filename):
 
 	ultra_ori = imgray - other_info
 	return ultra_ori
+	# return imgray
 
 def helper_getLength(kp1, kp2): 
 	x1, y1 = kp1.pt[0], kp1.pt[1]
@@ -57,8 +60,6 @@ def helper_find_matches(query_img, train_img, dis_thresh):
 	# BFMatcher with default params
 	bf = cv.BFMatcher()
 	matches = bf.knnMatch(des1,des2, k=2)
-	
-	# pdb.set_trace()
 
 	# Apply ratio test
 	good = []
@@ -76,7 +77,6 @@ def helper_find_matches(query_img, train_img, dis_thresh):
 			m = ms[idx]
 		else:
 			m = ms[0]
-		
 		kp1 = kp1s[m.queryIdx]
 		kp2 = kp2s[m.trainIdx]
 		dis = helper_getLength(kp1, kp2)
@@ -84,6 +84,14 @@ def helper_find_matches(query_img, train_img, dis_thresh):
 			good.append([m])
 			idx_train.append(m.trainIdx)
 			idx_query.append(m.queryIdx)
+
+	## No Constraint:  
+	# for ms in matches:
+	# 	m = ms[0]
+	# 	good.append([m])
+	# 	idx_train.append(m.trainIdx)
+	# 	idx_query.append(m.queryIdx)
+	
 	# cv.drawMatchesKnn expects list of lists as matches.
 	# img3 = cv.drawMatchesKnn(img1,kp1s,img2,kp2s,good, img2, flags=2)
 	# print("Number of matches: ",len(matches),", Number of features: ",  len(good))
@@ -109,20 +117,30 @@ def print_matching_keypoints(this_file, prev_file, next_file, file_num, folderna
 	green = (0,255,0)
 	light_blue = (255, 255, 0)
 	yellow = (0,255,255)
-	
+
+	r, c = this_img.shape
+
+	# superimpose = cv.imread(this_file)
+	# superimpose[:,:,0] = this_img
+	# superimpose[:,:,1] = np.zeros([r,c])
+	# superimpose[:,:,2] = prev_img
+
+
 	### Plot keypoints in this frame that are matched with the previous frame
+	#super impose:
+	# img=cv.drawKeypoints(superimpose,np.array(this_kpts_wrt_prev)[idx_query_prev],superimpose, color=light_blue,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 	img=cv.drawKeypoints(this_img,np.array(this_kpts_wrt_prev)[idx_query_prev],this_img, color=light_blue,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-	### Plot keypoints and their matched keypoints in the next frame
-	# img=cv.drawKeypoints(img,np.array(next_kps)[idx_train],this_img, color=(0,255,0),flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+	# ### Plot keypoints and their matched keypoints in the next frame
+	# # img=cv.drawKeypoints(img,np.array(next_kps)[idx_train],this_img, color=(0,255,0),flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-	## Draw a line between this keypoint to it in the next frame
-	for i in range(len(idx_train)):
-		i1 = idx_query_next[i]
-		i2 = idx_train[i]		
-		a = (int(this_kpts_wrt_next[i1].pt[0]), int(this_kpts_wrt_next[i1].pt[1]))
-		b = (int(next_kps[i2].pt[0]), int(next_kps[i2].pt[1]))
-		cv.line(img,a, b,green,1)
+	# ## Draw a line between this keypoint to it in the next frame
+	# for i in range(len(idx_train)):
+	# 	i1 = idx_query_next[i]
+	# 	i2 = idx_train[i]		
+	# 	a = (int(this_kpts_wrt_next[i1].pt[0]), int(this_kpts_wrt_next[i1].pt[1]))
+	# 	b = (int(next_kps[i2].pt[0]), int(next_kps[i2].pt[1]))
+	# 	cv.line(img,a, b,green,1)
 
 	## Draw a line between this keypoint to it in the previous frame
 	for i in range(len(idx_train_prev)):
@@ -130,20 +148,20 @@ def print_matching_keypoints(this_file, prev_file, next_file, file_num, folderna
 		i2 = idx_train_prev[i]		
 		a = (int(this_kpts_wrt_prev[i1].pt[0]), int(this_kpts_wrt_prev[i1].pt[1]))
 		b = (int(prev_kps[i2].pt[0]), int(prev_kps[i2].pt[1]))
-		cv.line(img,a, b,light_blue, 1)
+		cv.line(img,a, b,red, 1)
 	
-	img=cv.drawKeypoints(img,np.array(this_kpts_wrt_next)[idx_query_next],img, color=green,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+	# img=cv.drawKeypoints(img,np.array(this_kpts_wrt_next)[idx_query_next],img, color=green,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-	## Overlapping keypoints
-	overlapping_kps = []
-	# pdb.set_trace()
-	for kp1 in np.array(this_kpts_wrt_next)[idx_query_next]:
-		for kp2 in np.array(this_kpts_wrt_prev)[idx_query_prev]:
-			if is_the_same_kp(kp1, kp2):
-				overlapping_kps.append(kp1)
-				# print("overlap!")
+	# ## Overlapping keypoints
+	# overlapping_kps = []
+	# # pdb.set_trace()
+	# for kp1 in np.array(this_kpts_wrt_next)[idx_query_next]:
+	# 	for kp2 in np.array(this_kpts_wrt_prev)[idx_query_prev]:
+	# 		if is_the_same_kp(kp1, kp2):
+	# 			overlapping_kps.append(kp1)
+	# 			# print("overlap!")
 
-	img=cv.drawKeypoints(img,np.array(overlapping_kps),img, color=green,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+	# img=cv.drawKeypoints(img,np.array(overlapping_kps),img, color=green,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
 	cv.imwrite(foldername+str(file_num)+'.jpg',img)
 
@@ -166,14 +184,14 @@ def process_consecutive_frames(file_path):
 	file_of_interest = files[start_idx:start_idx+30]
 	# pdb.set_trace()
 
-	foldername = 'sift/'
+	foldername = 'sift_dilation/'
 
 	for i in range(1, len(file_of_interest)-1):
 		prev_file = file_of_interest[i-1]
 		this_file = file_of_interest[i]
 		next_file = file_of_interest[i+1]
 
-		print_matching_keypoints(this_file, prev_file, next_file,  i+4050,foldername, dis_thresh=20)
+		print_matching_keypoints(this_file, prev_file, next_file,  i+4050,foldername, dis_thresh=30)
 		# print_keypoints(this_file,i+start_idx)
 
 def process_same_frames(file_path):

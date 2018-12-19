@@ -4,7 +4,7 @@ import pdb
 import glob
 import os
 
-file_path = 'sift/'
+file_path = 'dilation/'
 files = glob.glob(file_path+"*.jpg")
 files = sorted(files)
 
@@ -12,4 +12,4 @@ files = sorted(files)
 clips = [ImageClip(m).set_duration(0.2) for m in files]
 
 concat_clip = concatenate_videoclips(clips, method="compose")
-concat_clip.write_videofile("SIFT_consecutive_lineOnly.mp4", fps=24)
+concat_clip.write_videofile("dilation.mp4", fps=24)
