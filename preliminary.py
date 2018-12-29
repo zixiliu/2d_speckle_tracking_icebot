@@ -36,8 +36,8 @@ process_frames(mypath)
 # diff_path = "diff/"
 # process_frames(diff_path)
 
-dilation_path = 'dilation/'
-sift.process_consecutive_frames(dilation_path)
+# dilation_path = 'dilation/'
+# sift.process_consecutive_frames(dilation_path)
 # sift.process_consecutive_frames(mypath)
 # sift.process_same_frames(mypath)
 

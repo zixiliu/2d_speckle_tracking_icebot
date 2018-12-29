@@ -47,7 +47,7 @@ def helper_save_my_image(filename, ultra_w_circle, processed_w_circle, plotit, e
 				save_file_name = folder_name+filename[-7:-4]+ext+'.png'
 		plt.savefig(save_file_name)
 		# pdb.set_trace()
-		# plt.savefig("speckle_diff/"+filename[-8::])
+		# plt.savefig("dilation/"+filename[-8::])
 
 def helper_get_distance_sq(kp1, kp2):
 	'''Get distance between two keypoints'''
@@ -83,7 +83,7 @@ def helper_find_next_speckle(keypoints_frame1, keypoints_frame2):
 
 
 def find_blob(filename, saveit = False, plotit = False):
-
+	print(filename)
 	a = cv2.imread(filename)
 	# pdb.set_trace()
 
@@ -95,14 +95,8 @@ def find_blob(filename, saveit = False, plotit = False):
 	######################################
 	imgray_cp = imgray.copy()
 	ret,thresh = cv2.threshold(imgray_cp,5,255,0)
-	thresh = cv2.erode(thresh, None, iterations=2)
-	thresh = cv2.dilate(thresh, None, iterations=2)
-
-	# if plotit:
-	# 	plt.figure(figsize=(15,15))
-	# 	plt.imshow(thresh,  cmap='gist_gray')
-	# 	plt.title('Thresh after threshold imgray')
-	# 	plt.show()
+	# thresh = cv2.erode(thresh, None, iterations=1)
+	# thresh = cv2.dilate(thresh, None, iterations=1)
 
 	image, contours, hierarchy = cv2.findContours(thresh,cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 	c = max(contours, key=cv2.contourArea)
@@ -133,9 +127,8 @@ def find_blob(filename, saveit = False, plotit = False):
 	######################################
 	### Pre-processing
 	######################################
-
 	## Normalize ultra
-	ultra = ultra / (ultra.max() - ultra.min())*255
+	# ultra = ultra / (ultra.max() - ultra.min())*255
 	#print(ultra.shape, ultra.max(), ultra.min())
 
 	# if plotit:
@@ -149,36 +142,41 @@ def find_blob(filename, saveit = False, plotit = False):
 	######################################
 	ret,thresh = cv2.threshold(ultra,140,255,0)
 
-
 	# thresh = cv2.erode(thresh, None, iterations=1)
-	thresh = cv2.dilate(thresh, None, iterations=2)
-
-	plt.imsave('dilation/'+filename[-8::], thresh)
-
-	ultra8 = (255 - thresh).astype('uint8')
-
-	# plt.figure()
-	# plt.imshow(ultra8)
+	thresh = cv2.dilate(thresh, None, iterations=1)
+	
+	# plt.imshow(thresh)
 	# plt.show()
-
-	# Set up the detector with default parameters.
-	detector = cv2.SimpleBlobDetector_create()
-
-	# Detect blobs.
-	keypoints = detector.detect(ultra8)
-
-	# Draw detected blobs as red circles.
-	# cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
-	im_ori = ultra_ori.copy()
-	ultra_w_circle = cv2.drawKeypoints(im_ori, keypoints, np.array([]), (0,255, 0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-	processed_w_circle = cv2.drawKeypoints(ultra8, keypoints, np.array([]), (0,255, 0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-
-	if saveit:
-		helper_save_my_image(filename, ultra_w_circle, processed_w_circle, plotit)
-
 	# pdb.set_trace()
 
-	return keypoints, ultra_ori, ultra8
+
+	print("saving "+'dilation/'+filename[-8::])
+	plt.imsave('dilation/'+filename[-8::], thresh)
+
+	# ultra8 = (255 - thresh).astype('uint8')
+
+	# # plt.figure()
+	# # plt.imshow(ultra8)
+	# # plt.show()
+
+	# # Set up the detector with default parameters.
+	# detector = cv2.SimpleBlobDetector_create()
+
+	# # Detect blobs.
+	# keypoints = detector.detect(ultra8)
+
+	# # Draw detected blobs as red circles.
+	# # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
+	# im_ori = ultra_ori.copy()
+	# ultra_w_circle = cv2.drawKeypoints(im_ori, keypoints, np.array([]), (0,255, 0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+	# processed_w_circle = cv2.drawKeypoints(ultra8, keypoints, np.array([]), (0,255, 0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+	# if saveit:
+	# 	helper_save_my_image(filename, ultra_w_circle, processed_w_circle, plotit)
+
+	# # pdb.set_trace()
+
+	# return keypoints, ultra_ori, ultra8
 
 
 def two_frames(file1, file2):
@@ -239,6 +237,7 @@ def process_frames(file_path):
 		next_file = file_of_interest[i+1]
 
 		# two_frames(this_file, next_file)
-		three_frames(prev_file, this_file, next_file)
+		# three_frames(prev_file, this_file, next_file)
+		find_blob(this_file)
 
 
