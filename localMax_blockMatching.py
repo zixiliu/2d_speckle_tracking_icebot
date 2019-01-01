@@ -57,65 +57,95 @@ def helper_is_edge(x, y, imshape, size):
         return False
 
 
-def find_match(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.TM_CCOEFF, size = 15):
+def find_match(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.TM_CCOEFF, size = 7):
     '''size: half block size''' 
+
+    search_size = 20
+
     for i, new_xy in enumerate(new_coordinates):
         new_y, new_x  = new_xy[0], new_xy[1]
         
-        def check_dis(pt): 
-            y, x = pt[0], pt[1]
-            return helper_get_distance(new_x, new_y, x, y)
-
-
+        # def check_dis(pt): 
+        #     y, x = pt[0], pt[1]
+        #     return helper_get_distance(new_x, new_y, x, y)
 
         is_edge = helper_is_edge(new_x, new_y, new_img.shape, size)
         if is_edge == False:
-            ## Find potential match within 30 pixels
-            potential_match = []
-            for j, prev_xy in enumerate(prev_coordinates):  
-                prev_y, prev_x  = prev_xy[0], prev_xy[1]
-                is_edge = helper_is_edge(prev_x, prev_y, prev_img.shape, size)
-                if (helper_get_distance(new_x, new_y, prev_x, prev_y) <= 15) and (is_edge == False): 
-                    potential_match.append(prev_xy)
+            # pdb.set_trace()
+            template = new_img[new_x-size:new_x+size+1, new_y-size:new_y+size+1]
+            search_block = prev_img[new_x-search_size:new_x+search_size+1, new_y-search_size:new_y+search_size+1]
+            res = cv.matchTemplate(search_block,template,method)
+            min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
             
-            if len(potential_match) > 0:
-                ## Block Match to find best match
-                match_results = []
-                for pt in potential_match: 
-                    y, x = pt[0], pt[1]
-                    res = cv.matchTemplate(prev_img[x-size:x+size, y-size:y+size],
-                                new_img[new_x-size:new_x+size, new_y-size:new_y+size],method)
-                    if res >= 50000:
-                        # match_results.append(res[0][0])
-                        match_results.append(pt)                
-                # match_results = np.array(match_results)
-                if len(match_results) > 0:
-                    match_sorted = sorted(match_results, key=check_dis)
+            ## If the method is TM_SQDIFF or TM_SQDIFF_NORMED, take minimum
+            if method in [cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
+                top_left = min_loc 
+            else:
+                top_left = max_loc
+            
+            top_left = (top_left[0] + new_x-size, top_left[1] + new_y-size)
+            bottom_right = (top_left[0]+size*2, top_left[1] + size*2)
+            # pdb.set_trace()
+
+            # cv.rectangle(new_img,top_left, bottom_right, 255, 1)
+            # cv.rectangle(prev_img,top_left, bottom_right, 255, 1)
+
+            # # match_y, match_x = max_loc[0], max_loc[1]
+            match_x, match_y = max_loc[0], max_loc[1]
+            match_x += new_x-(search_size - size)
+            match_y += new_y-(search_size - size)
+
+            cv.circle(new_img, (new_x, new_y), 2, (0, 255, 0))
+            cv.circle(prev_img, (match_x, match_y), 2, (255, 0, 0))
+            cv.arrowedLine(new_img, (match_x, match_y), (new_x, new_y), (255, 0, 0), 1, tipLength=0.3)
+            cv.arrowedLine(prev_img, (match_x, match_y), (new_x, new_y), (0, 255, 0), 1, tipLength=0.3)
+
+            # ## Find potential match within 30 pixels
+            # potential_match = []
+            # for j, prev_xy in enumerate(prev_coordinates):  
+            #     prev_y, prev_x  = prev_xy[0], prev_xy[1]
+            #     is_edge = helper_is_edge(prev_x, prev_y, prev_img.shape, size)
+            #     if (helper_get_distance(new_x, new_y, prev_x, prev_y) <= 15) and (is_edge == False): 
+            #         potential_match.append(prev_xy)
+            
+            # if len(potential_match) > 0:
+            #     ## Block Match to find best match
+            #     match_results = []
+            #     for pt in potential_match: 
+            #         y, x = pt[0], pt[1]
+            #         res = cv.matchTemplate(prev_img[x-size:x+size, y-size:y+size],
+            #                     new_img[new_x-size:new_x+size, new_y-size:new_y+size],method)
+            #         if res >= 50000:
+            #             # match_results.append(res[0][0])
+            #             match_results.append(pt)                
+            #     # match_results = np.array(match_results)
+            #     if len(match_results) > 0:
+            #         match_sorted = sorted(match_results, key=check_dis)
 
 
-                    # sort_index = np.argsort(match_results)
-                    # sort_index = sort_index[::-1]
-                    # match_results = match_results[sort_index]
+            #         # sort_index = np.argsort(match_results)
+            #         # sort_index = sort_index[::-1]
+            #         # match_results = match_results[sort_index]
                     
 
-                    # match = potential_match[match_idx]
-                    match = match_sorted[0]
-                    np.delete(prev_coordinates, j)
-                    ## Draw a square around match
-                    if i <= 1000:
-                        # top_left = (new_x-size, new_y+size)
-                        # bottom_right = (new_x+size, new_y-size)
-                        # cv.rectangle(new_img, top_left, bottom_right, (0,255, 0))
+            #         # match = potential_match[match_idx]
+            #         match = match_sorted[0]
+            #         np.delete(prev_coordinates, j)
+            #         ## Draw a square around match
+            #         if i <= 1000:
+            #             # top_left = (new_x-size, new_y+size)
+            #             # bottom_right = (new_x+size, new_y-size)
+            #             # cv.rectangle(new_img, top_left, bottom_right, (0,255, 0))
 
-                        match_y, match_x = match[0], match[1]
-                        cv.circle(prev_img, (match_x, match_y), 2, (255, 0, 0))
-                        # top_left = (match_x-size, match_y+size)
-                        # bottom_right = (match_x+size, match_y-size)
-                        # cv.rectangle(prev_img, top_left, bottom_right, (255,255, 0))
+            #             match_y, match_x = match[0], match[1]
+            #             cv.circle(prev_img, (match_x, match_y), 2, (255, 0, 0))
+            #             # top_left = (match_x-size, match_y+size)
+            #             # bottom_right = (match_x+size, match_y-size)
+            #             # cv.rectangle(prev_img, top_left, bottom_right, (255,255, 0))
 
-                        cv.arrowedLine(new_img, (match_x, match_y), (new_x, new_y), (255, 0, 0), 1, tipLength=0.3)
-                # cv.circle(new_img, (new_x, new_y), 2, (0, 255, 0))
-                new_img[new_y, new_x] = np.array([0,255,0])
+            #             cv.arrowedLine(new_img, (match_x, match_y), (new_x, new_y), (255, 0, 0), 1, tipLength=0.3)
+            #     # cv.circle(new_img, (new_x, new_y), 2, (0, 255, 0))
+            #     new_img[new_y, new_x] = np.array([0,255,0])
 
 
     return new_img, prev_img
@@ -132,7 +162,7 @@ def main(file1, file2):
     im2_gray = cv.cvtColor(im2,cv.COLOR_BGR2GRAY)
     new_coordinates = get_local_max(im2_gray)
 
-    pdb.set_trace()
+    # pdb.set_trace()
     new_img, prev_img = find_match(prev_coordinates, new_coordinates, im1, im2)
 
     fig = plt.figure(figsize=(64,48),frameon=False)
