@@ -65,13 +65,13 @@ def get_color(x1,y1,x2,y2):
     green = (0,intensity,0)
     light_blue=(0,intensity,intensity)
 
-    if (x2-x1)>= 0 and (y2-y1)>0:
+    if (x2-x1)>= 0 and (y2-y1)>=0:
         return yellow
-    if (x2-x1)<= 0 and (y2-y1)>0:
+    if (x2-x1)<= 0 and (y2-y1)>=0:
         return blue
-    if (x2-x1)<= 0 and (y2-y1)<0:
+    if (x2-x1)<= 0 and (y2-y1)<=0:
         return green
-    if (x2-x1)>= 0 and (y2-y1)<0:
+    if (x2-x1)>= 0 and (y2-y1)<=0:
         return light_blue
     # length = helper_get_distance(x1, y1, x2, y2)
     # if length > 0: 
@@ -115,8 +115,8 @@ def find_match(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.T
                 for entry in potential_match: 
                     pt, j = entry[0], entry[1]
                     y, x = pt[0], pt[1]
-                    res = cv.matchTemplate(prev_img[x-size:x+size, y-size:y+size],
-                                new_img[new_x-size:new_x+size, new_y-size:new_y+size],method)                    
+                    res = cv.matchTemplate(prev_img[x-size:x+size+1, y-size:y+size+1],
+                                new_img[new_x-size:new_x+size+1, new_y-size:new_y+size+1],method)                    
                     match_results.append([res[0][0], x, y, j])
                 match_results = np.array(match_results)
                 
