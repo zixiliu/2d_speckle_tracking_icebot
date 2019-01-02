@@ -19,7 +19,7 @@ def helper_get_distance(x1, y1, x2, y2):
 	return np.sqrt((x1-x2)**2 + (y1-y2)**2)
 
 def get_local_max(imgray): 
-    coordinates = peak_local_max(imgray, footprint = np.ones((12, 12)))
+    coordinates = peak_local_max(imgray, footprint = np.ones((5, 5)))
     peaks = []
     for xy in coordinates: 
         x, y = xy[0], xy[1]
@@ -57,7 +57,7 @@ def helper_is_edge(x, y, imshape, size):
         return False
 
 
-def find_match(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.TM_CCOEFF, size = 5):
+def find_match(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.TM_CCOEFF, size = 7):
     '''size: half block size''' 
     for i, new_xy in enumerate(new_coordinates):
         new_y, new_x  = new_xy[0], new_xy[1]
@@ -65,8 +65,6 @@ def find_match(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.T
         def check_dis(pt): 
             y, x = pt[0], pt[1]
             return helper_get_distance(new_x, new_y, x, y)
-
-
 
         is_edge = helper_is_edge(new_x, new_y, new_img.shape, size)
         if is_edge == False:
@@ -85,24 +83,27 @@ def find_match(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.T
                     y, x = pt[0], pt[1]
                     res = cv.matchTemplate(prev_img[x-size:x+size, y-size:y+size],
                                 new_img[new_x-size:new_x+size, new_y-size:new_y+size],method)
-                    if res >= 50000:
-                        # match_results.append(res[0][0])
-                        match_results.append(pt)                
-                # match_results = np.array(match_results)
+                    # if res >= 10000:
+                    match_results.append(res[0][0])
+                        # match_results.append(pt)                
+                match_results = np.array(match_results)
+                
                 if len(match_results) > 0:
-                    match_sorted = sorted(match_results, key=check_dis)
+                    # match_sorted = sorted(match_results, key=check_dis)
 
-
-                    # sort_index = np.argsort(match_results)
-                    # sort_index = sort_index[::-1]
+                    sort_index = np.argsort(match_results)
+                    sort_index = sort_index[::-1]
                     # match_results = match_results[sort_index]
                     
 
-                    # match = potential_match[match_idx]
-                    match = match_sorted[0]
-                    np.delete(prev_coordinates, j)
+
+                    match = potential_match[sort_index[0]]
+                    # match = match_sorted[0]
+                    # pdb.set_trace()
+
+                    # prev_coordinates = np.delete(prev_coordinates, j, axis=0) ## BUG!!
                     ## Draw a square around match
-                    if i <= 1000:
+                    if i <= 10000:
                         # top_left = (new_x-size, new_y+size)
                         # bottom_right = (new_x+size, new_y-size)
                         # cv.rectangle(new_img, top_left, bottom_right, (0,255, 0))
@@ -114,6 +115,8 @@ def find_match(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.T
                         # cv.rectangle(prev_img, top_left, bottom_right, (255,255, 0))
 
                         cv.arrowedLine(new_img, (match_x, match_y), (new_x, new_y), (255, 0, 0), 1, tipLength=0.3)
+                else:
+                    print("no match")
                 # cv.circle(new_img, (new_x, new_y), 2, (0, 255, 0))
                 new_img[new_y, new_x] = np.array([0,255,0])
 
