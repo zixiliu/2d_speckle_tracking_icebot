@@ -1,11 +1,15 @@
 import cv2 as cv
+import matplotlib.pyplot as plt
 # from scipy import ndimage
 import numpy as np
 # import sys
-# import pdb
+import pdb
 # import glob
 # import colorsys
 from skimage.feature import peak_local_max
+
+from remove_outlier import remove_outlier
+
 
 ################################################################################
 ########## Helper Functions
@@ -21,7 +25,7 @@ def helper_get_distance(x1, y1, x2, y2):
 	'''Get distance between two keypoints'''
 	return np.sqrt((x1-x2)**2 + (y1-y2)**2)
 
-def helper_get_potential_match(new_x, new_y, prev_coordinates, prev_img, new_img, size):
+def helper_get_potential_match(new_x, new_y, prev_coordinates, prev_img, new_img, size, method):
     potential_match = []
     for j, prev_xy in enumerate(prev_coordinates):  
         prev_y, prev_x  = prev_xy[0], prev_xy[1]
@@ -50,24 +54,52 @@ def helper_get_best_match(match_results):
         return None
     
 def helper_find_best_match(new_x, new_y, match_dict, prev_coordinates, size, prev_img, new_img, method):
-    match_results = helper_get_potential_match(new_x, new_y, prev_coordinates, prev_img, new_img, size)
+    match_results = helper_get_potential_match(new_x, new_y, prev_coordinates, prev_img, new_img, size, method)
     while len(match_results) > 0:
         match = helper_get_best_match(match_results)
-        if match != None: 
-            match_val, match_x, match_y, j= match[0], int(match[1]), int(match[2]), int(match[3])
+        try: 
+            if len(match) >1: 
+                match_val, match_x, match_y, j= match[0], int(match[1]), int(match[2]), int(match[3])
 
-            this_match = (match_x, match_y)
-            if this_match in match_dict: 
-                prev_match_newframe = match_dict[this_match]
-                prev_match_x, prev_match_y = prev_match_newframe[0], prev_match_newframe[1]
-                prev_result = cv.matchTemplate(prev_img[match_x-size:match_x+size+1, match_y-size:match_y+size+1],
-                    new_img[prev_match_x-size:prev_match_x+size+1, prev_match_y-size:prev_match_y+size+1],method)
-                if prev_result >= match_val: ## Previous match was a better match
-                    np.delete(match_results, 0, axis=0)
-                else: ## This match is a better match
+                this_match = (match_x, match_y)
+                if this_match in match_dict: 
+                    prev_match_newframe = match_dict[this_match]
+                    prev_match_x, prev_match_y = prev_match_newframe[0], prev_match_newframe[1]
+                    prev_result = cv.matchTemplate(prev_img[match_x-size:match_x+size+1, match_y-size:match_y+size+1],
+                        new_img[prev_match_x-size:prev_match_x+size+1, prev_match_y-size:prev_match_y+size+1],method)[0][0]
+                    if prev_result >= match_val: ## Previous match was a better match
+                        match_results = np.delete(match_results, 0, axis=0)
+                        
+                    else: ## This match is a better match
+                        match_dict[this_match] = (new_x, new_y)
+                        match_dict = helper_find_best_match(prev_match_x, prev_match_y, match_dict, prev_coordinates, size, prev_img, new_img, method)
+                        break
+                else: 
                     match_dict[this_match] = (new_x, new_y)
-                    match_dict = helper_find_best_match(prev_match_x, prev_match_y, match_dict, prev_coordinates, size, prev_img, new_img, method)
+                    break
+            else: 
+                break
+        except: 
+            break
     return match_dict
+
+def helper_get_color(x1,y1,x2,y2):
+
+    intensity = 255
+
+    yellow = (intensity,intensity,0)
+    blue= (0,0,intensity)
+    green = (0,intensity,0)
+    light_blue=(0,intensity,intensity)
+
+    if (x2-x1)>= 0 and (y2-y1)>=0:
+        return yellow
+    if (x2-x1)<= 0 and (y2-y1)>=0:
+        return blue
+    if (x2-x1)<= 0 and (y2-y1)<=0:
+        return green
+    if (x2-x1)>= 0 and (y2-y1)<=0:
+        return light_blue
 
 ################################################################################
 ########## Private Functions
@@ -92,15 +124,62 @@ def priv_get_local_max(imgray):
 def priv_pt_matching(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.TM_CCOEFF, size = 7):
     ## Dictionary of local maxima matches
     match_dict = {} # key: value ==> prev_pt: new_pt
-    for new_xy in new_coordinates:
+    for i, new_xy in enumerate(new_coordinates):
         new_y, new_x  = new_xy[0], new_xy[1]
         is_edge = helper_is_edge(new_x, new_y, new_img.shape, size)
         if is_edge == False:
             match_dict = helper_find_best_match(new_x, new_y, match_dict, prev_coordinates, size, prev_img, new_img, method)
             
     ## Convert match dictionary to a list
-    match_list = [[x,match_dict[x]] for x in match_dict.keys()]
-    return match_list
+    # match_list = [[x,match_dict[x]] for x in match_dict.keys()]
+    return match_dict
+
+
+def priv_draw_displacement(match_list, prev_file, new_file, new_img):
+
+    prev_img = cv.imread(prev_file)
+    prev_img_gray = cv.cvtColor(prev_img,cv.COLOR_BGR2GRAY)
+    prev_coordinates = priv_get_local_max(prev_img_gray)
+    
+    if np.count_nonzero(new_img) == 0: 
+        new_img = cv.imread(new_file)
+        new_img_gray = cv.cvtColor(new_img,cv.COLOR_BGR2GRAY)
+    else: 
+        # new_img
+        new_img_gray = cv.cvtColor(new_img,cv.COLOR_BGR2GRAY)
+
+    new_coordinates = priv_get_local_max(new_img_gray)
+
+
+    for match in match_list: 
+        prev_xy, new_xy = match[0], match[1]
+        new_x, new_y = new_xy[0], new_xy[1]
+        match_x, match_y = prev_xy[0], prev_xy[1]
+
+        color = helper_get_color(match_x, match_y, new_x, new_y)
+        cv.arrowedLine(new_img, (match_x, match_y), (new_x, new_y), color, 1, tipLength=0.3)
+        # cv.circle(new_img, (new_x, new_y), 2, (255, 0, 0))
+
+    for new_xy in new_coordinates:
+        new_y, new_x  = new_xy[0], new_xy[1]    
+        new_img[new_y, new_x] = np.array([255,0,0])
+    for prev_xy in prev_coordinates: 
+        prev_y, prev_x  = prev_xy[0], prev_xy[1]
+        cv.circle(prev_img, (prev_x, prev_y), 2, (255, 0, 0))
+    
+    fig = plt.figure(figsize=(64,48),frameon=False)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    ax.imshow(prev_img)
+    plt.savefig(file1[-8::])
+    
+    fig = plt.figure(figsize=(64,48),frameon=False)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    ax.imshow(new_img)
+    plt.savefig(file2[-8::])    
 
 ################################################################################
 ########## Public Functions
@@ -114,4 +193,22 @@ def match_frames(prev_file, new_file):
     new_img_gray = cv.cvtColor(new_img,cv.COLOR_BGR2GRAY)
     new_coordinates = priv_get_local_max(new_img_gray)
 
-    match_list = priv_pt_matching(prev_coordinates, new_coordinates, prev_img, new_img)
+    match_dict = priv_pt_matching(prev_coordinates, new_coordinates, prev_img, new_img)
+    match_dict, new_img = remove_outlier(match_dict, new_img.shape, new_img)
+    ## Convert match dictionary to a list
+    match_list = [[x,match_dict[x]] for x in match_dict.keys()]
+    priv_draw_displacement(match_list, prev_file, new_file, np.zeros(new_img.shape))
+
+    pdb.set_trace()
+
+
+################################################################################
+## Delete me
+################################################################################
+ori_path = '../original/'
+# ori_files = glob.glob(ori_path+"*.jpg")
+# ori_files = sorted(ori_files)
+file1 = ori_path+"4056.jpg"
+file2 = ori_path+'4057.jpg'
+
+match_frames(file1, file2)
