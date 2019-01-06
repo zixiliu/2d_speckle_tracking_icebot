@@ -44,11 +44,44 @@ def helper_get_potential_match(new_x, new_y, prev_coordinates, prev_img, new_img
     match_results = np.array(match_results)
     return match_results
 
-def helper_get_best_match(match_results): 
-    match_idx = np.argmax(match_results, axis=0)[0]
-    match = match_results[match_idx]
+def helper_get_best_match(match_results, new_x, new_y): 
+    # match_idx = np.argmax(match_results, axis=0)[0]
+    sort_idx = match_results.argsort(axis=0)[::-1][:,0]
+    match = match_results[sort_idx[0]]
 
-    if match[0] > 10000: 
+    # sorted_match_results = np.sort(match_results, axis=0)[::-1]
+    # match = sorted_match_results[0]
+    # pdb.set_trace()
+    
+    if match[0] > 5000: 
+    # if match[0] > 0.90: 
+        try:
+            pt2 = match_results[sort_idx[1]]
+            val1, val2 = match[0], pt2[0]
+            # print(val2/val1)
+            if sum(match_results[:,0]/val1 == 1) > 1: 
+                if 1 in match_results[:,0]/val1:
+                    print(val1, match_results[:,0]/val1)
+                    pdb.set_trace()
+            # print('best match', match[0], 'second best match', match_results[np.argmax(match_results, axis=0)[1]][0])
+            if (val2/val1 > 0.95): 
+                # print('two similar matches')
+                match1_x, match1_y = match[1], match[2]
+                match2_x, match2_y = pt2[1], pt2[2]
+                dis1 = helper_get_distance(new_x, new_y, match1_x, match1_y)
+                dis2 = helper_get_distance(new_x, new_y, match2_x, match2_y)
+                if dis1 > dis2: 
+                    match=pt2
+                    # print((match1_x, match1_y), (match2_x, match2_y))
+                # elif dis1==dis2:
+                #     print('Two points of same distance and same val', dis1, val1)
+                #     print((match1_x, match1_y), (match2_x, match2_y))
+                #     pdb.set_trace()
+
+        except: 
+            # print("only one match")
+            pass
+    
         return match
     else: 
         return None
@@ -56,7 +89,7 @@ def helper_get_best_match(match_results):
 def helper_find_best_match(new_x, new_y, match_dict, prev_coordinates, size, prev_img, new_img, method):
     match_results = helper_get_potential_match(new_x, new_y, prev_coordinates, prev_img, new_img, size, method)
     while len(match_results) > 0:
-        match = helper_get_best_match(match_results)
+        match = helper_get_best_match(match_results, new_x, new_y)
         try: 
             if len(match) >1: 
                 match_val, match_x, match_y, j= match[0], int(match[1]), int(match[2]), int(match[3])
@@ -81,6 +114,9 @@ def helper_find_best_match(new_x, new_y, match_dict, prev_coordinates, size, pre
                 break
         except: 
             break
+
+    # print('hi')
+    # pdb.set_trace()
     return match_dict
 
 def helper_get_color(x1,y1,x2,y2):
@@ -121,7 +157,9 @@ def priv_get_local_max(imgray):
     return coordinates
 
 '''Returns a 1:1 matched coordinate list'''
-def priv_pt_matching(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.TM_CCOEFF, size = 7):
+def priv_pt_matching(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.TM_CCORR, size = 7):
+    # pdb.set_trace()
+
     ## Dictionary of local maxima matches
     match_dict = {} # key: value ==> prev_pt: new_pt
     for i, new_xy in enumerate(new_coordinates):
@@ -129,7 +167,6 @@ def priv_pt_matching(prev_coordinates, new_coordinates, prev_img, new_img, metho
         is_edge = helper_is_edge(new_x, new_y, new_img.shape, size)
         if is_edge == False:
             match_dict = helper_find_best_match(new_x, new_y, match_dict, prev_coordinates, size, prev_img, new_img, method)
-            
     ## Convert match dictionary to a list
     # match_list = [[x,match_dict[x]] for x in match_dict.keys()]
     return match_dict
@@ -145,7 +182,7 @@ def priv_draw_displacement(match_list, prev_file, new_file, new_img):
         new_img = cv.imread(new_file)
         new_img_gray = cv.cvtColor(new_img,cv.COLOR_BGR2GRAY)
     else: 
-        # new_img
+        print("valid input new_img")
         new_img_gray = cv.cvtColor(new_img,cv.COLOR_BGR2GRAY)
 
     new_coordinates = priv_get_local_max(new_img_gray)
@@ -194,12 +231,25 @@ def match_frames(prev_file, new_file):
     new_coordinates = priv_get_local_max(new_img_gray)
 
     match_dict = priv_pt_matching(prev_coordinates, new_coordinates, prev_img, new_img)
-    match_dict, new_img = remove_outlier(match_dict, new_img.shape, new_img)
+    match_dict, new_img = remove_outlier(match_dict, new_img.shape, new_img, method='neighbor_pixel')
+    # ## Second round
+    # match_dict, new_img = remove_outlier(match_dict, new_img.shape, new_img, method='neighbor_pixel')
+    # ## Third round
+    # match_dict, new_img = remove_outlier(match_dict, new_img.shape, new_img, method='neighbor_pixel')
+    # # ## Four round
+    # match_dict, new_img = remove_outlier(match_dict, new_img.shape, new_img, method='neighbor_pixel')
+    # ## Fifth round
+    # match_dict, new_img = remove_outlier(match_dict, new_img.shape, new_img, method='neighbor_pixel')
+    # ## Sixth round
+    # match_dict, new_img = remove_outlier(match_dict, new_img.shape, new_img, method='neighbor_pixel')
+    
     ## Convert match dictionary to a list
     match_list = [[x,match_dict[x]] for x in match_dict.keys()]
-    priv_draw_displacement(match_list, prev_file, new_file, np.zeros(new_img.shape))
+    # priv_draw_displacement(match_list, prev_file, new_file, np.zeros(new_img.shape))
+    priv_draw_displacement(match_list, prev_file, new_file, new_img)
 
-    pdb.set_trace()
+
+    # pdb.set_trace()
 
 
 ################################################################################
