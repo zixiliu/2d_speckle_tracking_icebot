@@ -5,6 +5,9 @@ import numpy as np
 import sys
 import pdb
 import glob
+from skimage.feature import peak_local_max
+from contrast import apply_brightness_contrast
+
 
 ### Global variables
 dis_thresh = 490
@@ -81,7 +84,6 @@ def helper_find_next_speckle(keypoints_frame1, keypoints_frame2):
 
 	return (start_pts, end_pts)
 
-
 def find_blob(filename, saveit = False, plotit = False):
 	print(filename)
 	a = cv2.imread(filename)
@@ -89,6 +91,14 @@ def find_blob(filename, saveit = False, plotit = False):
 
 	imgray = a.copy()
 	imgray = cv2.cvtColor(imgray,cv2.COLOR_BGR2GRAY)
+
+	## find local peaks
+	# imgray = cv2.medianBlur(imgray,5)
+	fp = np.ones((5, 5))
+	fp[:,2] = np.zeros(5)
+	fp[2,2] = 1
+
+	coordinates = peak_local_max(imgray, threshold_abs = 150, footprint = fp)
 
 	######################################
 	### Mask Out Info by Contour
@@ -117,7 +127,10 @@ def find_blob(filename, saveit = False, plotit = False):
 
 	ultra_ori = imgray - other_info
 	ultra = ultra_ori.copy()
+	## boost contrast
+	# ultra = apply_brightness_contrast(ultra, 0, 64)
 
+	# plt.imsave('original/high_contrast/'+filename[-8::], ultra, cmap='gist_gray')
 	# if plotit:
 	# 	plt.figure(figsize=(15,15))
 	# 	plt.imshow(ultra,  cmap='gist_gray')
@@ -140,18 +153,26 @@ def find_blob(filename, saveit = False, plotit = False):
 	######################################
 	### Find Speckle
 	######################################
-	ret,thresh = cv2.threshold(ultra,140,255,0)
-
-	# thresh = cv2.erode(thresh, None, iterations=1)
-	thresh = cv2.dilate(thresh, None, iterations=1)
+	ret,thresh = cv2.threshold(ultra,100,255,0)
 	
-	# plt.imshow(thresh)
-	# plt.show()
-	# pdb.set_trace()
+	# thresh = cv2.medianBlur(thresh, 11)
+	thresh = cv2.dilate(thresh, None,iterations=12) #3
+	thresh = cv2.erode(thresh, None, iterations=2)
 
+	thresh = cv2.medianBlur(thresh, 11)
+	thresh = cv2.dilate(thresh, None,iterations=12) #3
+	thresh = cv2.erode(thresh, None, iterations=1)
+	
+
+
+	thresh = cv2.medianBlur(thresh, 11)
+
+	# for xy in coordinates: 
+	# 	y, x  = xy[0], xy[1]
+	# 	cv2.circle(thresh, (x, y), 2, (0, 255, 0))
 
 	print("saving "+'dilation/'+filename[-8::])
-	plt.imsave('dilation/'+filename[-8::], thresh)
+	plt.imsave('dilation/dilation10/'+filename[-8::], thresh)
 
 	# ultra8 = (255 - thresh).astype('uint8')
 
