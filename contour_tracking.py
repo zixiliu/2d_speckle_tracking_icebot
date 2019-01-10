@@ -132,7 +132,7 @@ def draw_contour_by_dilation(dilation_filename, ori_filename, prev_contours):
     
     # Draw circles on the local peaks 
     # TWO layer hierachy
-    coordinates_large = peak_local_max(ori_gray, footprint = np.ones((10, 10)))
+    coordinates_large = peak_local_max(ori_gray, threshold_abs = 100, footprint = np.ones((5, 5)))
     # coordinates_large = peak_local_max(ori_gray, min_distance = 10)
 
     # delaunay triangulation
@@ -160,16 +160,16 @@ def draw_contour_by_dilation(dilation_filename, ori_filename, prev_contours):
          
         if rect_contains(r, pt1) and rect_contains(r, pt2) and rect_contains(r, pt3) :
          
-            # cv.line(ori, pt1, pt2, delaunay_color, 1)
-            # cv.line(ori, pt2, pt3, delaunay_color, 1)
-            # cv.line(ori, pt3, pt1, delaunay_color, 1)
-            pass
+            cv.line(ori, pt1, pt2, delaunay_color, 1)
+            cv.line(ori, pt2, pt3, delaunay_color, 1)
+            cv.line(ori, pt3, pt1, delaunay_color, 1)
+            # pass
     
     for item in coordinates_large: 
         y, x  = item[0], item[1]
         # pt_in_contour = cv.pointPolygonTest(my_contours[0].contour, (x, y), False) 
         # if pt_in_contour == 1: 
-        cv.circle(ori, (x, y), 2, (255, 0, 0))
+        cv.circle(ori, (x, y), 1, (255, 0, 0))
             # ori[y, x] = np.array([255,0,0])
 
     # coordinates_small = peak_local_max(ori_gray, footprint = np.ones((3, 3)))
@@ -183,21 +183,25 @@ def draw_contour_by_dilation(dilation_filename, ori_filename, prev_contours):
     #             cv.circle(ori, (x, y), 2, (255, 255, 0))
     
 
-    plt.figure(figsize=(50,40))
+
     for i, c in enumerate(my_contours):        
         color = colors[c.color_index % N]
-        cv.drawContours(ori, [c.contour], 0, color, 1)
-    plt.imshow(ori)
-    # plt.show()
-    # plt.imsave('contour/'+dilation_filename[-8:-1], ori)
-    plt.savefig("first_contour/"+dilation_filename[-8::])
+        cv.drawContours(ori, [c.contour], 0, color, 3)
+
+    fig = plt.figure(figsize=(64,48),frameon=False)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    ax.imshow(ori)
+    plt.savefig("images/first_contour/"+dilation_filename[-8::])
+
 
     return my_contours
 
 
 
-dilation_path = 'dilation/'
-ori_path = 'original/'
+dilation_path = 'images/dilation/'
+ori_path = 'images/original/'
 
 dilation_files = glob.glob(dilation_path+"*.jpg")
 dilation_files = sorted(dilation_files)

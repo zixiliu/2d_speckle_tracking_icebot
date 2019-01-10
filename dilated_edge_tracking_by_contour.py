@@ -1,3 +1,6 @@
+'''This file automatically tracks the edge of the valve with inputs of thresholded dilated images, 
+    saves the results in both image and numpy array format'''
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,14 +13,12 @@ import sys
 import pdb
 import glob
 
-mypath = "exp5_images/"
-mypath = 'dilation/'
-mypath='dilation/dilation10/'
+mypath='images/dilation/dilation10/'
 
 
 def get_edge_pts(mypath): 
 
-    ori_path = 'original/'
+    ori_path = 'images/original/'
     ori_files = glob.glob(ori_path+"*.jpg")
     ori_files = sorted(ori_files)
 
@@ -26,7 +27,9 @@ def get_edge_pts(mypath):
     start_idx = 0
     file_of_interest = files[start_idx:start_idx+20]
 
-    pts = np.zeros((20, 50, 2))
+    num_pts = 20
+
+    pts = np.zeros((20, num_pts, 2))
 
     for file_idx in range(0, len(file_of_interest)):
         # print(file_idx)
@@ -60,13 +63,17 @@ def get_edge_pts(mypath):
         contours = sorted(contours, key=lambda x: cv2.contourArea(x), reverse = True)
         cv2.drawContours(ori_img, contours, 0, (255, 0, 0), 1)
         try:
-            ctr_index = np.linspace(1,len(contours[0]),50)
+            ctr_index = np.linspace(1,len(contours[0]),num_pts+1)
+            ctr_index = ctr_index[0:-1]
+            # pdb.set_trace()
         except:
             print('contour problem')
             pdb.set_trace()
         for j, idx in enumerate(ctr_index): 
             idx = (int(idx)-1)
             xy = contours[0][idx][0]
+            if j == 0: 
+                cv2.circle(ori_img, (xy[0], xy[1]), 5, (255,0,0))    
             cv2.circle(ori_img, (xy[0], xy[1]), 3, (0,255,0))
             pts[file_idx][j] = xy
             ## draw arrows:
@@ -74,8 +81,10 @@ def get_edge_pts(mypath):
                 match_x, match_y = int(pts[file_idx-1][j][0]), int(pts[file_idx-1][j][1])
                 cv2.arrowedLine(ori_img, (match_x, match_y), (xy[0], xy[1]), (0,100,0), 1, tipLength=0.3)
 
-        plt.imsave('diff_dilation/dilation_edge/'+this_file[-8::], ori_img)
+        plt.imsave('images/dilation_edge_tracking/'+this_file[-8::], ori_img)
     
     return pts
 
 pts= get_edge_pts(mypath)
+print(pts.shape)
+np.save('outputs/auto_pts', pts)

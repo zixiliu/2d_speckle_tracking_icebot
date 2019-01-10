@@ -8,7 +8,7 @@ import glob
 import colorsys
 from skimage.feature import peak_local_max
 
-ori_path = 'original/'
+ori_path = 'images/original/'
 # ori_files = glob.glob(ori_path+"*.jpg")
 # ori_files = sorted(ori_files)
 file1 = ori_path+"4056.jpg"
@@ -47,7 +47,7 @@ def plot_local_max(filename):
 
     plt.figure(figsize=(30,25))
     plt.imshow(ori)
-    plt.savefig("localmax_blockmatch/"+filename[-8::])
+    plt.savefig("images/localmax_blockmatch/"+filename[-8::])
 
 def helper_is_edge(x, y, imshape, size):
     row, col = imshape[:2] 
@@ -86,6 +86,18 @@ def get_color(x1,y1,x2,y2):
     #     return (0,255,0)
 
 
+# Check if a point is inside a rectangle
+def rect_contains(rect, point) :
+    if point[0] < rect[0] :
+        return False
+    elif point[1] < rect[1] :
+        return False
+    elif point[0] > rect[2] :
+        return False
+    elif point[1] > rect[3] :
+        return False
+    return True
+
 def find_match(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.TM_CCOEFF, size = 7):
     '''size: half block size''' 
     intensity = 255
@@ -95,6 +107,13 @@ def find_match(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.T
     green = (0,intensity,0)
     light_blue=(0,intensity,intensity)
     red = (intensity,0,0)
+
+
+    # delaunay triangulation
+    img_size = new_img.shape
+    r = (0, 0, img_size[1], img_size[0])
+    subdiv  = cv.Subdiv2D(r)
+    delaunay_color = red
 
     for new_xy in new_coordinates:
         new_y, new_x  = new_xy[0], new_xy[1]
@@ -142,9 +161,23 @@ def find_match(prev_coordinates, new_coordinates, prev_img, new_img, method=cv.T
                         # else: 
                         #     cv.circle(new_img, (new_x, new_y), 4, light_blue, cv.FILLED)
 
-                # cv.circle(new_img, (new_x, new_y), 2, (255, 0, 0))
-                new_img[new_y, new_x] = np.array([255,0,0])
+                        subdiv.insert((new_x, new_y))
 
+
+            # cv.circle(new_img, (new_x, new_y), 2, (255, 0, 0))
+            new_img[new_y, new_x] = np.array([255,0,0])
+
+    triangleList = subdiv.getTriangleList()
+    for t in triangleList :
+        pt1 = (t[0], t[1])
+        pt2 = (t[2], t[3])
+        pt3 = (t[4], t[5])
+         
+        if rect_contains(r, pt1) and rect_contains(r, pt2) and rect_contains(r, pt3) :
+         
+            cv.line(new_img, pt1, pt2, delaunay_color, 1)
+            cv.line(new_img, pt2, pt3, delaunay_color, 1)
+            cv.line(new_img, pt3, pt1, delaunay_color, 1)
 
     return new_img, prev_img
 
@@ -168,14 +201,14 @@ def main(file1, file2):
     ax.set_axis_off()
     fig.add_axes(ax)
     ax.imshow(prev_img)
-    plt.savefig("localmax_blockmatch/"+file1[-8::])
+    plt.savefig("images/localmax_blockmatch/"+file1[-8::])
     
     fig = plt.figure(figsize=(64,48),frameon=False)
     ax = plt.Axes(fig, [0., 0., 1., 1.])
     ax.set_axis_off()
     fig.add_axes(ax)
     ax.imshow(new_img)
-    plt.savefig("localmax_blockmatch/"+file2[-8::])
+    plt.savefig("images/localmax_blockmatch/"+file2[-8::])
     
 
 main(file1, file2)

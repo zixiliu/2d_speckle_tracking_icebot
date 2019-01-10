@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 # import sys
 import pdb
-# import glob
+import glob
 # import colorsys
 from skimage.feature import peak_local_max
 
@@ -62,7 +62,8 @@ def helper_get_best_match(match_results, new_x, new_y):
             if sum(match_results[:,0]/val1 == 1) > 1: 
                 if 1 in match_results[:,0]/val1:
                     print(val1, match_results[:,0]/val1)
-                    pdb.set_trace()
+                    # pdb.set_trace()
+                    print('num matches: ', sum(match_results[:,0]/val1 == 1) -1)
             # print('best match', match[0], 'second best match', match_results[np.argmax(match_results, axis=0)[1]][0])
             if (val2/val1 > 0.95): 
                 # print('two similar matches')
@@ -145,7 +146,11 @@ def priv_get_local_max(imgray):
         print("Expecting single channel gray image input to priv_get_local_max()")
         raise ValueError
 
-    coordinates = peak_local_max(imgray, threshold_abs = 100, footprint = np.ones((5, 5)))
+    fp = np.ones((5, 5))
+    fp[:,2] = np.zeros(5)
+    fp[2,2] = 1
+
+    coordinates = peak_local_max(imgray, threshold_abs = 100, footprint = fp)
     peaks = []
     for xy in coordinates: 
         x, y = xy[0], xy[1]
@@ -195,7 +200,7 @@ def priv_draw_displacement(match_list, prev_file, new_file, new_img):
 
         color = helper_get_color(match_x, match_y, new_x, new_y)
         cv.arrowedLine(new_img, (match_x, match_y), (new_x, new_y), color, 1, tipLength=0.3)
-        # cv.circle(new_img, (new_x, new_y), 2, (255, 0, 0))
+        cv.circle(new_img, (new_x, new_y), 2, (255, 0, 0))
 
     for new_xy in new_coordinates:
         new_y, new_x  = new_xy[0], new_xy[1]    
@@ -204,19 +209,19 @@ def priv_draw_displacement(match_list, prev_file, new_file, new_img):
         prev_y, prev_x  = prev_xy[0], prev_xy[1]
         cv.circle(prev_img, (prev_x, prev_y), 2, (255, 0, 0))
     
-    fig = plt.figure(figsize=(64,48),frameon=False)
-    ax = plt.Axes(fig, [0., 0., 1., 1.])
-    ax.set_axis_off()
-    fig.add_axes(ax)
-    ax.imshow(prev_img)
-    plt.savefig(file1[-8::])
+    # fig = plt.figure(figsize=(12,9),frameon=False)
+    # ax = plt.Axes(fig, [0., 0., 1., 1.])
+    # ax.set_axis_off()
+    # fig.add_axes(ax)
+    # ax.imshow(prev_img)
+    # plt.savefig('results/'+prev_file[-8::])
     
-    fig = plt.figure(figsize=(64,48),frameon=False)
+    fig = plt.figure(figsize=(16,12),frameon=False)
     ax = plt.Axes(fig, [0., 0., 1., 1.])
     ax.set_axis_off()
     fig.add_axes(ax)
     ax.imshow(new_img)
-    plt.savefig(file2[-8::])    
+    plt.savefig('results/'+new_file[-8::])    
 
 ################################################################################
 ########## Public Functions
@@ -243,9 +248,10 @@ def match_frames(prev_file, new_file):
     # ## Sixth round
     # match_dict, new_img = remove_outlier(match_dict, new_img.shape, new_img, method='neighbor_pixel')
     
-    ## Convert match dictionary to a list
+    # # Convert match dictionary to a list
     match_list = [[x,match_dict[x]] for x in match_dict.keys()]
     # priv_draw_displacement(match_list, prev_file, new_file, np.zeros(new_img.shape))
+    # match_list = None
     priv_draw_displacement(match_list, prev_file, new_file, new_img)
 
 
@@ -255,10 +261,21 @@ def match_frames(prev_file, new_file):
 ################################################################################
 ## Delete me
 ################################################################################
-ori_path = '../original/'
-# ori_files = glob.glob(ori_path+"*.jpg")
-# ori_files = sorted(ori_files)
-file1 = ori_path+"4056.jpg"
-file2 = ori_path+'4057.jpg'
+# ori_path = '../original/'
+# # ori_files = glob.glob(ori_path+"*.jpg")
+# # ori_files = sorted(ori_files)
+# file1 = ori_path+"4056.jpg"
+# file2 = ori_path+'4057.jpg'
 
-match_frames(file1, file2)
+# match_frames(file1, file2)
+
+
+ori_path = '../original/'
+ori_files = glob.glob(ori_path+"*.jpg")
+ori_files = sorted(ori_files)
+
+for i, file in enumerate(ori_files):
+    if i < len(ori_files)-1:
+        print(file)
+        print(ori_files[i+1])
+        match_frames(file, ori_files[i+1])

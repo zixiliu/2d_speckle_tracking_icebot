@@ -10,7 +10,7 @@ import colorsys
 N = 100
 HSV_tuples = [(x*1.0/N, 0.5, 0.5) for x in range(N)]
 RGB_tuples = map(lambda x: colorsys.hsv_to_rgb(*x), HSV_tuples)
-print(RGB_tuples)
+# print(RGB_tuples)
 
 
 def draw_contour_by_dilation(dilation_filename, ori_filename): 
@@ -18,14 +18,12 @@ def draw_contour_by_dilation(dilation_filename, ori_filename):
     src = cv.imread(dilation_filename)
     ori = cv.imread(ori_filename)
  
-    imgray = src.copy()
     # Threshold it so it becomes binary
-    imgray = cv.cvtColor(imgray,cv.COLOR_BGR2GRAY)
+    imgray = cv.cvtColor(src,cv.COLOR_BGR2GRAY)
     ret, thresh = cv.threshold(imgray,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU)
     img, contours, hierarchy = cv.findContours(thresh,cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=lambda x: cv.contourArea(x), reverse = True)
-    # print(len(contours))
-    pdb.set_trace()
+    
     plt.figure()
     for i, c in enumerate(contours):        
         color = (255- 20*i, 40*i % 255, 10*i)
@@ -33,12 +31,12 @@ def draw_contour_by_dilation(dilation_filename, ori_filename):
     plt.imshow(ori)
     # plt.show()
     # plt.imsave('temp/'+dilation_filename[-8:-1], ori)
-    plt.savefig("contour/"+dilation_filename[-8::])
+    plt.savefig("images/contour/"+dilation_filename[-8::])
 
 
 
-dilation_path = 'dilation/'
-ori_path = 'exp5_images/'
+dilation_path = 'images/dilation/'
+ori_path = 'images/original/'
 
 dilation_files = glob.glob(dilation_path+"*.jpg")
 dilation_files = sorted(dilation_files)

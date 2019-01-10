@@ -9,7 +9,7 @@ import glob
 
 
 ## Load Image
-mypath = "exp5_images/"
+mypath = "images/exp5_images/"
 file1 = mypath+"16062017_125258857_600.jpg"
 file2 = mypath+'16062017_125258889_601.jpg'
 
@@ -115,8 +115,8 @@ def print_matching_keypoints(this_file, prev_file, next_file, file_num, folderna
 	red = (0,0,255)
 	blue = (255,0,0)
 	green = (0,255,0)
-	light_blue = (255, 255, 0)
-	yellow = (0,255,255)
+	yellow = (255, 255, 0)
+	light_blue = (0,255,255)
 
 	r, c = this_img.shape
 
@@ -134,13 +134,13 @@ def print_matching_keypoints(this_file, prev_file, next_file, file_num, folderna
 	# ### Plot keypoints and their matched keypoints in the next frame
 	# # img=cv.drawKeypoints(img,np.array(next_kps)[idx_train],this_img, color=(0,255,0),flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-	# ## Draw a line between this keypoint to it in the next frame
-	# for i in range(len(idx_train)):
-	# 	i1 = idx_query_next[i]
-	# 	i2 = idx_train[i]		
-	# 	a = (int(this_kpts_wrt_next[i1].pt[0]), int(this_kpts_wrt_next[i1].pt[1]))
-	# 	b = (int(next_kps[i2].pt[0]), int(next_kps[i2].pt[1]))
-	# 	cv.line(img,a, b,green,1)
+	## Draw a line between this keypoint to it in the next frame
+	for i in range(len(idx_train)):
+		i1 = idx_query_next[i]
+		i2 = idx_train[i]		
+		a = (int(this_kpts_wrt_next[i1].pt[0]), int(this_kpts_wrt_next[i1].pt[1]))
+		b = (int(next_kps[i2].pt[0]), int(next_kps[i2].pt[1]))
+		cv.line(img,a, b,green,1)
 
 	## Draw a line between this keypoint to it in the previous frame
 	for i in range(len(idx_train_prev)):
@@ -148,9 +148,9 @@ def print_matching_keypoints(this_file, prev_file, next_file, file_num, folderna
 		i2 = idx_train_prev[i]		
 		a = (int(this_kpts_wrt_prev[i1].pt[0]), int(this_kpts_wrt_prev[i1].pt[1]))
 		b = (int(prev_kps[i2].pt[0]), int(prev_kps[i2].pt[1]))
-		cv.line(img,a, b,red, 1)
+		cv.line(img,a, b,light_blue, 1)
 	
-	# img=cv.drawKeypoints(img,np.array(this_kpts_wrt_next)[idx_query_next],img, color=green,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+	img=cv.drawKeypoints(img,np.array(this_kpts_wrt_next)[idx_query_next],img, color=green,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
 	# ## Overlapping keypoints
 	# overlapping_kps = []
@@ -173,7 +173,7 @@ def print_keypoints(file, i):
 	sift = cv.xfeatures2d.SIFT_create()
 	kp = sift.detect(gray,None)
 	img=cv.drawKeypoints(gray,kp,img)
-	cv.imwrite('sift_kp/'+str(i)+'.jpg',img)
+	cv.imwrite('images/sift_kp/'+str(i)+'.jpg',img)
 
 
 def process_consecutive_frames(file_path):
@@ -184,7 +184,7 @@ def process_consecutive_frames(file_path):
 	file_of_interest = files[start_idx:start_idx+30]
 	# pdb.set_trace()
 
-	foldername = 'sift_dilation/'
+	foldername = 'images/sift/'
 
 	for i in range(1, len(file_of_interest)-1):
 		prev_file = file_of_interest[i-1]
@@ -201,7 +201,7 @@ def process_same_frames(file_path):
 	#start_idx = 0
 	file_of_interest = [int(round(x)) for x in np.arange(0, len(files), 18.46)]
 
-	foldername = 'sift_same/'
+	foldername = 'images/sift_same/'
 
 	for i in range(1, len(file_of_interest)-1):
 		prev_file = files[file_of_interest[i-1]]

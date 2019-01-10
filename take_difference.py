@@ -13,8 +13,8 @@ import sys
 import pdb
 import glob
 
-mypath = "exp5_images/"
-mypath = 'dilation/'
+
+mypath='images/dilation/dilation10/'
 # file1 = mypath+"16062017_125453973_4050.jpg"
 # # # file2 = mypath+'16062017_125454009_4051.jpg'
 # # # file2 = mypath+'16062017_125454209_4057.jpg'
@@ -32,21 +32,24 @@ start_idx = 0
 file_of_interest = files[start_idx:start_idx+19]
 for i in range(0, len(file_of_interest)-1):
     this_file = file_of_interest[i]
+    print(this_file)
     next_file = file_of_interest[i+1]
     im1 = helper_strip_img_text(this_file) 
     im2 = helper_strip_img_text(next_file)  
 
     im = im2 - im1
-    idx = (im > 100) | (im < 50)
+    # idx = (im > 100) | (im < 50)
+    # idx = (im > 200) | (im < 50)
+    idx = (im>200)
     im[idx] = 0
-
+    # pdb.set_trace()
     # Normalize
     # im = im/100*255
 
     # pdb.set_trace()
     plt.figure()
-    plt.imshow(im, cmap='gist_gray')
-    plt.imsave('diff_dilation/'+this_file[-8::], im)
+    plt.imshow(im)
+    plt.imsave('images/diff_dilation/diff_dilation10/'+this_file[-8::], im)
 
 
 

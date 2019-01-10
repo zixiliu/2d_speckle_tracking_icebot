@@ -29,7 +29,7 @@ def get_coordinate(File, prev_file, prev_x, prev_y):
     xscroll.grid(row=1, column=0, sticky=E+W)
     yscroll = Scrollbar(frame)
     yscroll.grid(row=0, column=1, sticky=N+S)
-    canvas = Canvas(frame, bd=0, xscrollcommand=xscroll.set, yscrollcommand=yscroll.set, width=640, height=480)
+    canvas = Canvas(frame, bd=0, xscrollcommand=xscroll.set, yscrollcommand=yscroll.set, width=1200, height=900)
     canvas.grid(row=0, column=0, sticky=N+S+E+W)
     xscroll.config(command=canvas.xview)
     yscroll.config(command=canvas.yview)
@@ -42,7 +42,7 @@ def get_coordinate(File, prev_file, prev_x, prev_y):
     canvas.config(scrollregion=canvas.bbox(ALL))
 
     # Circle around previous_xy
-    canvas.create_rectangle(prev_x-2, prev_y-2, prev_x+2, prev_y+2, outline=red)
+    canvas.create_rectangle(prev_x-2, prev_y-2, prev_x+2, prev_y+2, outline=green)
 
     #function to be called when mouse is clicked
     def printcoords(event):
@@ -67,7 +67,8 @@ def get_recording():
     # display_prev(File, x, y)
     # pdb.set_trace()
 
-    ori_path = '../original/'
+    # ori_path = '../original/'
+    ori_path = 'speckles only/'
     ori_files = glob.glob(ori_path+"*.jpg")
     ori_files = sorted(ori_files)
 
@@ -76,6 +77,7 @@ def get_recording():
     i = 0
     x,y = get_coordinate(ori_files[i], None, x, y)
     for i in range(1, 20):
+        print(ori_files[i])
         x,y = get_coordinate(ori_files[i], ori_files[i-1], x, y)
         record.append((x, y))
 
@@ -83,7 +85,7 @@ def get_recording():
     return record
 
 def record_one_speckle():
-    file  = open('manual_records.txt', 'a')
+    file  = open('manual_records2.txt', 'a')
     record = get_recording()
     file.write(str(record)[1:-1]+'\n')
     # pdb.set_trace()
