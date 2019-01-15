@@ -6,7 +6,7 @@ import pdb
 # from localMax_blockMatching import get_local_max
 from skimage.feature import peak_local_max
 
-ori_path = 'original/'
+ori_path = '../images/original/'
 ori_files = glob.glob(ori_path+"*.jpg")
 ori_files = sorted(ori_files)
 # file = ori_files[1]
@@ -46,9 +46,10 @@ def plot_downsampled_imgs(file):
     img16 = cv.pyrDown(img8)
     img32 = cv.pyrDown(img16)
 
-    plt.imsave('downsamplePlot/down_by_2/'+file[-8::], img2)
-    plt.imsave('downsamplePlot/down_by_4/'+file[-8::], img4)
-    plt.imsave('downsamplePlot/down_by_8/'+file[-8::], img8)
+    plt.imsave('../images/downsamplePlot/down_by_2/'+file[-8::], img2)
+    plt.imsave('../images/downsamplePlot/down_by_4/'+file[-8::], img4)
+    plt.imsave('../images/downsamplePlot/down_by_8/'+file[-8::], img8)
+    plt.imsave('../images/downsamplePlot/down_by_16/'+file[-8::], img16)
 
     img = mark_peaks(img, marksize=4)
     img2 = mark_peaks(img2, marksize=2)
@@ -59,15 +60,15 @@ def plot_downsampled_imgs(file):
 
     plt.figure()
     plt.imshow(img2)
-    plt.savefig('downsamplePlot/down_by_2/w_peak/'+file[-8::])
+    plt.savefig('../images/downsamplePlot/down_by_2/w_peak/'+file[-8::])
 
     plt.figure()
     plt.imshow(img4)
-    plt.savefig('downsamplePlot/down_by_4/w_peak/'+file[-8::])
+    plt.savefig('../images/downsamplePlot/down_by_4/w_peak/'+file[-8::])
 
     plt.figure()
     plt.imshow(img8)
-    plt.savefig('downsamplePlot/down_by_8/w_peak/'+file[-8::])
+    plt.savefig('../images/downsamplePlot/down_by_8/w_peak/'+file[-8::])
 
     # def plot_im(ax, img, title): 
     #     ax.imshow(img)
@@ -96,15 +97,16 @@ def plot_downsampled_imgs(file):
     # plt.title('down by 8')
 
     # plt.show()
-    print('downsamplePlot/'+file[-8::])
-    # plt.savefig('downsamplePlot/'+file[-8::], bbox_inches='tight', pad_inches=0, transparent=True)
+    print('../images/downsamplePlot/'+file[-8::])
+    # plt.savefig('../images/downsamplePlot/'+file[-8::], bbox_inches='tight', pad_inches=0, transparent=True)
 
 for file in ori_files:
+    print(file)
     plot_downsampled_imgs(file)
 
 
-# file1 = 'downsamplePlot/down_by_8/savefig_4051.jpg'
-# file2 = 'downsamplePlot/down_by_8/4051.jpg'
+# file1 = '../images/downsamplePlot/down_by_8/savefig_4051.jpg'
+# file2 = '../images/downsamplePlot/down_by_8/4051.jpg'
 
 # img1 = cv.imread(file1)
 # img2 = cv.imread(file2)
