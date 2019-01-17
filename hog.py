@@ -13,8 +13,11 @@ def get_hist(gray):
     gray = np.float32(gray) / 255.0
     
     # Calculate gradient 
-    gx = cv.Sobel(gray, cv.CV_32F, 1, 0, ksize=1)
-    gy = cv.Sobel(gray, cv.CV_32F, 0, 1, ksize=1)
+    try:
+        gx = cv.Sobel(gray, cv.CV_32F, 1, 0, ksize=1)
+        gy = cv.Sobel(gray, cv.CV_32F, 0, 1, ksize=1)
+    except:
+        pdb.set_trace()
 
     # Python Calculate gradient magnitude and direction ( in degrees ) 
     mag, angle = cv.cartToPolar(gx, gy, angleInDegrees=True)
@@ -89,12 +92,18 @@ def hog_match(template, source):
             # pdb.set_trace()
             block_hist = get_hist(block)
             pearson_coeff = np.corrcoef(template_hist, block_hist)[0,1]
+            if pearson_coeff == np.nan:
+                pearson_coeff = 1
             source_hist_matrix[yshift, xshift] = pearson_coeff
-    
+    source_hist_matrix = np.nan_to_num(source_hist_matrix)
     xy = np.where(source_hist_matrix==source_hist_matrix.max())
-    x, y = xy[0][0], xy[1][0]
-    pdb.set_trace()
-    return x,y
+    # pdb.set_trace()
+    try:
+        x, y = xy[0][0], xy[1][0]
+    except:
+        pdb.set_trace()
+    # pdb.set_trace()
+    return [[y, x]]
 
 
 
