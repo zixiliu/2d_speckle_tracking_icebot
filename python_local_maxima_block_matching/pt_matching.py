@@ -131,10 +131,10 @@ def helper_get_color(x1,y1,x2,y2):
 
     if (x2-x1)>= 0 and (y2-y1)>=0:
         return yellow
-    if (x2-x1)<= 0 and (y2-y1)>=0:
-        return blue
     if (x2-x1)<= 0 and (y2-y1)<=0:
         return green
+    if (x2-x1)<= 0 and (y2-y1)>=0:
+        return blue
     if (x2-x1)>= 0 and (y2-y1)<=0:
         return light_blue
 
@@ -200,7 +200,7 @@ def priv_draw_displacement(match_list, prev_file, new_file, new_img):
 
         color = helper_get_color(match_x, match_y, new_x, new_y)
         cv.arrowedLine(new_img, (match_x, match_y), (new_x, new_y), color, 1, tipLength=0.3)
-        cv.circle(new_img, (new_x, new_y), 2, (255, 0, 0))
+        # cv.circle(new_img, (new_x, new_y), 2, (255, 0, 0))
 
     for new_xy in new_coordinates:
         new_y, new_x  = new_xy[0], new_xy[1]    
@@ -216,12 +216,17 @@ def priv_draw_displacement(match_list, prev_file, new_file, new_img):
     # ax.imshow(prev_img)
     # plt.savefig('results/'+prev_file[-8::])
     
-    fig = plt.figure(figsize=(16,12),frameon=False)
+    # fig = plt.figure(figsize=(16,12),frameon=False)
+    fig = plt.figure(figsize=(20,20),frameon=False)
     ax = plt.Axes(fig, [0., 0., 1., 1.])
     ax.set_axis_off()
     fig.add_axes(ax)
     ax.imshow(new_img)
-    plt.savefig('results/'+new_file[-8::])    
+    # plt.show()
+    plt.savefig('images/3hierarchy_ccorr_normed/'+new_file[-8::]) 
+    # plt.figure(figsize=(20,20))   
+    # plt.imsave('images/3hierarchy_ccorr_normed/'+new_file[-8::], new_img)
+
 
 ################################################################################
 ########## Public Functions

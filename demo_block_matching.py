@@ -49,7 +49,7 @@ def block_matching(template_gray, source_gray,  method, savefilename):
     temp = source_width - template_width + 1
 
     print(loc)
-    print(res)
+    # print(res)
     # plt.figure()
     # plt.subplot(121)
     # plt.imshow(template_gray, cmap='gray')
@@ -207,14 +207,14 @@ def find_match(source, template, next_img, prev_img, next_gray, prev_gray, ori_i
 
 
     plt.subplot(245)
-    plt.imshow(prev_gray_cp)
+    plt.imshow(prev_gray_cp, cmap='gray')
     plt.subplot(246)
-    plt.imshow(next_gray_cp)
+    plt.imshow(next_gray_cp, cmap='gray')
 
     plt.subplot(247)
-    plt.imshow(prev_block)
+    plt.imshow(prev_block, cmap='gray')
     plt.subplot(248)
-    plt.imshow(next_block)
+    plt.imshow(next_block, cmap='gray')
 
     plt.tight_layout()
 
@@ -265,6 +265,7 @@ def plot_match(prev_file, next_file, ori_prev, ori_file, ds_factor, savefilename
 
     ## define template by around a peak 
     x, y = int(25*8./ds_factor), int(26*8./ds_factor)
+    # x, y = int(10*8./ds_factor), int(20*8./ds_factor)
 
     # pdb.set_trace()
 
@@ -395,7 +396,7 @@ elif method == cv.TM_CCORR:
 elif method == cv.TM_CCORR_NORMED:
     savefilename = savefilepath+'TM_CCORR_NORMED/'+'step0_down_by_8.png'
 
-(x, y, prev_match_x, prev_match_y) = plot_match(file1, file2, ori1, ori2, 8, savefilename, half_template_size = half_template_size, half_source_size=6, method=method)
+# (x, y, prev_match_x, prev_match_y) = plot_match(file1, file2, ori1, ori2, 8, savefilename, half_template_size = half_template_size, half_source_size=6, method=method)
 # x, y = 48/2, 52/2
 # (x, y, prev_match_x, prev_match_y) = match_in_region(file1, file2, ori1, ori2, 8, x, y, x, y, 8, savefilename, half_template_size = half_template_size, method =method)# 
 
@@ -416,6 +417,8 @@ elif method == cv.TM_CCORR:
     savefilename = savefilepath+'TM_CCORR/'+'step1_down_by_4.png'
 elif method == cv.TM_CCORR_NORMED:
     savefilename = savefilepath+'TM_CCORR_NORMED/'+'step1_down_by_4.png'
+
+(x, y, prev_match_x, prev_match_y) = plot_match(file1, file2, ori1, ori2, 4, savefilename, half_template_size = half_template_size, half_source_size=6, method=method)
 
 # (x, y, prev_match_x, prev_match_y) = match_in_region(file1, file2, ori1, ori2, 4, x, y, prev_match_x, prev_match_y,8, savefilename, half_template_size = half_template_size, method =method)# 
 # (x, y, prev_match_x, prev_match_y) = plot_match(file1, file2, ori1, ori2, 4, savefilename, half_template_size = half_template_size, method=method)
@@ -441,7 +444,7 @@ elif method == cv.TM_CCORR_NORMED:
     savefilename = savefilepath+'TM_CCORR_NORMED/'+'step2_down_by_2.png'
 
 # (x, y, prev_match_x, prev_match_y) = match_in_region(file1, file2, ori1, ori2, 2, x, y, prev_match_x, prev_match_y,4, savefilename, half_template_size = half_template_size, method =method)# 
-(x, y, prev_match_x, prev_match_y) = match_in_region(file1, file2, ori1, ori2, 2, x, y, prev_match_x, prev_match_y,8, savefilename, half_template_size = half_template_size, method =method)# 
+(x, y, prev_match_x, prev_match_y) = match_in_region(file1, file2, ori1, ori2, 2, x, y, prev_match_x, prev_match_y,4, savefilename, half_template_size = half_template_size, method =method)# 
 
 
 if method == 'hog': 
