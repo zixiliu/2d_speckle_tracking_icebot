@@ -109,7 +109,7 @@ def hog_match(template, source):
 
 
 # --------------------------------------------------------------------------- #
-path = 'images/downsamplePlot/down_by_8/'
+path = '../images/downsamplePlot/down_by_8/'
 files = glob.glob(path+"*.jpg")
 files = sorted(files)
 f1 = '4067.jpg'

@@ -8,23 +8,26 @@ from skimage.feature import peak_local_max
 import matplotlib.pyplot as plt
 
 from hog import hog_match
+import sys
+sys.path.append("..")
+
 from python_local_maxima_block_matching.remove_outlier import remove_outlier
-from python_local_maxima_block_matching.pt_matching import priv_draw_displacement
+from python_local_maxima_block_matching.pt_matching import priv_draw_displacement, helper_get_color
 
 ## Global variables 
-path16 = 'images/downsamplePlot/down_by_16/'
+path16 = '../images/downsamplePlot/down_by_16/'
 files16 = glob.glob(path16+"*.jpg")
 files16 = sorted(files16)
-path8 = 'images/downsamplePlot/down_by_8/'
+path8 = '../images/downsamplePlot/down_by_8/'
 files8 = glob.glob(path8+"*.jpg")
 files8 = sorted(files8)
-path4 = 'images/downsamplePlot/down_by_4/'
+path4 = '../images/downsamplePlot/down_by_4/'
 files4 = glob.glob(path4+"*.jpg")
 files4 = sorted(files4)
-path2 = 'images/downsamplePlot/down_by_2/'
+path2 = '../images/downsamplePlot/down_by_2/'
 files2 = glob.glob(path2+"*.jpg")
 files2 = sorted(files2)
-ori_path = 'images/original/'
+ori_path = '../images/original/'
 ori_files = glob.glob(ori_path+"*.jpg")
 ori_files = sorted(ori_files)
 
@@ -132,6 +135,56 @@ def find_match(prev_file, next_file, ds_factor, x, y, prev_x, prev_y, half_templ
     (prev_match_x, prev_match_y) = block_match(source, template, method, half_template_size, yy_ul, yy_lr, xx_ul, xx_lr, x,y)
     return (prev_match_x, prev_match_y)
 
+def find_match_hierarchy(prev_file, next_file, x, y, half_template_size, method, match_dictionary, ori_img, first_downsize_by=4, plotit=True):
+
+    if (first_downsize_by != 4):
+        print("Need manual modification to code")
+        raise ValueError
+    
+    found_match = False
+    # ## downsampled by 8
+        # (prev_match_x, prev_match_y) = find_match(prev_file, next_file, 8, x, y, np.Inf, 6 , half_template_size, method)
+        # if prev_match_x != np.Inf:
+        #     ## downsampled by 4
+        #     prev_match_x, prev_match_y = prev_match_x * 2, prev_match_y * 2
+        #     (prev_match_x, prev_match_y) = find_match(prev_file, next_file, 4, x, y, prev_match_x, prev_match_y, half_template_size, method)
+    (prev_match_x, prev_match_y) = find_match(prev_file, next_file, 4, x, y, np.Inf, 6, half_template_size, method, first_downsize_by)
+
+    if prev_match_x != np.Inf:
+        ## downsampled by 2
+        prev_match_x, prev_match_y = prev_match_x * 2, prev_match_y * 2
+        (prev_match_x, prev_match_y) = find_match(prev_file, next_file, 2, x, y, prev_match_x, prev_match_y, half_template_size, method, first_downsize_by)
+
+        if prev_match_x != np.Inf:
+            # ## in original image
+            prev_match_x, prev_match_y = prev_match_x * 2, prev_match_y * 2
+
+            (prev_match_x, prev_match_y) = find_match(prev_file, next_file, 1, x, y, prev_match_x, prev_match_y, half_template_size, method, first_downsize_by)
+
+            if prev_match_x != np.Inf:
+                # print("found a match")
+                ## Draw displacement field on the original image 
+                prev_match_y, prev_match_x = int(prev_match_y), int(prev_match_x)
+                
+                displacement = np.sqrt((x*first_downsize_by-prev_match_x)**2+(y*first_downsize_by-prev_match_y)**2)
+                if displacement <= 20: #5+15.*y/next_img.shape[0]:
+                    found_match = True
+                    
+                    match_dictionary[(prev_match_x, prev_match_y)] = (x*first_downsize_by, y*first_downsize_by)
+                    if plotit:
+                        color = helper_get_color(prev_match_x, prev_match_y, x*first_downsize_by, y*first_downsize_by)
+                        # cv.arrowedLine(ori_img, (prev_match_x, prev_match_y), (x*first_downsize_by,y*first_downsize_by), color, 1, tipLength=0.3)
+                        
+                        color= (0,0,255)
+
+                        cv.line(ori_img, (prev_match_x, prev_match_y), (x*first_downsize_by,y*first_downsize_by), color, 1)
+                        cv.circle(ori_img, (x*first_downsize_by, y*first_downsize_by), 3, (0, 255, 0))
+                        print('plot')
+    if (found_match == False) & (plotit== True):
+        cv.circle(ori_img, (x*first_downsize_by, y*first_downsize_by), 1, (255, 0, 0))
+        print('no match')
+    return ori_img, match_dictionary, found_match
+
 def plot_match(prev_file, next_file, half_template_size=7, method = 'hog'): 
 
     '''
@@ -206,67 +259,38 @@ def plot_match(prev_file, next_file, half_template_size=7, method = 'hog'):
             x, y = xy[1], xy[0]
         except:
             print(xy)
-            pdb.set_trace()
+            pdb.set_trace()        
 
-        found_match = False
-
-        
-
-        # ## downsampled by 8
-        # (prev_match_x, prev_match_y) = find_match(prev_file, next_file, 8, x, y, np.Inf, 6 , half_template_size, method)
-        # if prev_match_x != np.Inf:
-        #     ## downsampled by 4
-        #     prev_match_x, prev_match_y = prev_match_x * 2, prev_match_y * 2
-        #     (prev_match_x, prev_match_y) = find_match(prev_file, next_file, 4, x, y, prev_match_x, prev_match_y, half_template_size, method)
-        (prev_match_x, prev_match_y) = find_match(prev_file, next_file, 4, x, y, np.Inf, 6, half_template_size, method, first_downsize_by)
-
-        if prev_match_x != np.Inf:
-            ## downsampled by 2
-            prev_match_x, prev_match_y = prev_match_x * 2, prev_match_y * 2
-            (prev_match_x, prev_match_y) = find_match(prev_file, next_file, 2, x, y, prev_match_x, prev_match_y, half_template_size, method, first_downsize_by)
-
-            if prev_match_x != np.Inf:
-                # ## in original image
-                prev_match_x, prev_match_y = prev_match_x * 2, prev_match_y * 2
-
-                (prev_match_x, prev_match_y) = find_match(prev_file, next_file, 1, x, y, prev_match_x, prev_match_y, half_template_size, method, first_downsize_by)
-
-                if prev_match_x != np.Inf:
-                    # print("found a match")
-                    ## Draw displacement field on the original image 
-                    prev_match_y, prev_match_x = int(prev_match_y), int(prev_match_x)
-                    
-                    displacement = np.sqrt((x*first_downsize_by-prev_match_x)**2+(y*first_downsize_by-prev_match_y)**2)
-                    if displacement <= 10:
-                        cv.arrowedLine(ori_img, (prev_match_x, prev_match_y), (x*first_downsize_by,y*first_downsize_by), (255,255,0), 1, tipLength=0.3)
-                        found_match = True
-                        match_dictionary[(prev_match_x, prev_match_y)] = (x*first_downsize_by, y*first_downsize_by)
-        # if found_match == False:
-        #     cv.circle(ori_img, (x*first_downsize_by, y*first_downsize_by), 1, (255, 0, 0))
+        ori_img, match_dictionary, _ = find_match_hierarchy(prev_file, next_file, x, y, half_template_size, method, match_dictionary, ori_img)
 
 
     ## Save displacement field in figure
-    if method == 'hog': 
-        savefilename = 'images/demo_3hierarchy_bm/'+'HOG/'+next_file[-8::]
-    elif method == cv.TM_CCORR:
-        savefilename = 'images/demo_3hierarchy_bm/'+'TM_CCORR/'+next_file[-8::]
-    elif method == cv.TM_CCORR_NORMED:
-        savefilename = 'images/demo_3hierarchy_bm/'+'TM_CCORR_NORMED/'+next_file[-8::]
+    # if method == 'hog': 
+    #     savefilename = '../images/demo_3hierarchy_bm/'+'HOG/'+'pre_outlier_rm_'+next_file[-8::]
+    # elif method == cv.TM_CCORR:
+    #     savefilename = '../images/demo_3hierarchy_bm/'+'TM_CCORR/'+'pre_outlier_rm_'+next_file[-8::]
+    # elif method == cv.TM_CCORR_NORMED:
+    #     savefilename = '../images/demo_3hierarchy_bm/'+'TM_CCORR_NORMED/'+'pre_outlier_rm_'+next_file[-8::]
 
 
-    plt.figure(figsize=(20,20))
-    # plt.imshow(ori_img)
-    # plt.savefig(savefilename)
-    plt.imsave(savefilename, ori_img)
+    savefilename = '../images/3hierarchy_ccorr_normed/'+'pre_outlier_rm_'+next_file[-8::]
+
+    fig = plt.figure(figsize=(20,20),frameon=False)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    ax.imshow(ori_img)
+    plt.savefig(savefilename) 
+    # plt.imsave(savefilename, ori_img)
     print("Block Matching Done!")
     return match_dictionary
 
 
 
-# path = 'images/downsamplePlot/down_by_16/'
+# path = '../images/downsamplePlot/down_by_16/'
 # files = glob.glob(path+"*.jpg")
 # files = sorted(files)
-# ori_path = 'images/original/'
+# ori_path = '../images/original/'
 # ori_files = glob.glob(ori_path+"*.jpg")
 # ori_files = sorted(ori_files)
 
@@ -282,34 +306,25 @@ def plot_match(prev_file, next_file, half_template_size=7, method = 'hog'):
 
 
 
+# f1 = '4067.jpg'
+# f2 = '4068.jpg'
+# match_dictionary = plot_match(f1, f2, method=cv.TM_CCORR_NORMED, half_template_size = 4)
 
+# for i in range(4051,4078):
+#     f1 = str(i)+'.jpg'
+#     f2 = str(i+1)+'.jpg'
+#     print('------------------------------------------------')
+#     print(f2)
+#     match_dictionary = plot_match(f1, f2, method=cv.TM_CCORR_NORMED, half_template_size = 4)
 
-# file1 = path+'4063.jpg'
-# file2 = path+'4064.jpg'
-# ori1 = ori_path+'4063.jpg'
-# ori2 = ori_path+'4064.jpg'
+#     new_img = cv.imread(ori_path+f2)
+#     match_dict, new_img = remove_outlier(match_dictionary, new_img.shape, new_img, method='neighbor_pixel')
 
-f1 = '4067.jpg'
-f2 = '4068.jpg'
-# plot_match(f1, f2, method=cv.TM_CCORR)
-# plot_match(f1, f2, method='hog')
+#     # # Convert match dictionary to a list
+#     match_list = [[x,match_dict[x]] for x in match_dict.keys()]
+#     priv_draw_displacement(match_list, ori_path+f1, ori_path+f2, new_img)
 
-
-for i in range(4051,4078):
-    f1 = str(i)+'.jpg'
-    f2 = str(i+1)+'.jpg'
-    print('------------------------------------------------')
-    print(f2)
-    match_dictionary = plot_match(f1, f2, method=cv.TM_CCORR_NORMED, half_template_size = 4)
-
-    new_img = cv.imread(ori_path+f2)
-    match_dict, new_img = remove_outlier(match_dictionary, new_img.shape, new_img, method='neighbor_pixel')
-
-    # # Convert match dictionary to a list
-    match_list = [[x,match_dict[x]] for x in match_dict.keys()]
-    priv_draw_displacement(match_list, ori_path+f1, ori_path+f2, new_img)
-
-pdb.set_trace()
+# pdb.set_trace()
 
 # for i, file in enumerate(files): 
 #     print(file[-8::])
@@ -317,10 +332,10 @@ pdb.set_trace()
 #         plot_match(file, files[i+1], ori_files[i], ori_files[i+1],8, half_template_size=15, half_source_size=17)
 
 
-# path = 'images/downsamplePlot/down_by_4/'
+# path = '../images/downsamplePlot/down_by_4/'
 # files = glob.glob(path+"*.jpg")
 # files = sorted(files)
-# ori_path = 'images/original/'
+# ori_path = '../images/original/'
 # ori_files = glob.glob(ori_path+"*.jpg")
 # ori_files = sorted(ori_files)
 
