@@ -8,8 +8,8 @@ import glob
 import colorsys
 from skimage.feature import peak_local_max
 
-# ori_path = 'images/original/'
-ori_path = 'images/downsamplePlot/down_by_16/'
+# ori_path = '../imagesoriginal/'
+ori_path = '../imagesdownsamplePlot/down_by_16/'
 ori_files = glob.glob(ori_path+"*.jpg")
 ori_files = sorted(ori_files)
 file1 = ori_path+"4056.jpg"
@@ -49,7 +49,7 @@ def plot_local_max(filename):
 
     plt.figure(figsize=(30,25))
     plt.imshow(ori)
-    plt.savefig("images/localmax_blockmatch/"+filename[-8::])
+    plt.savefig("../imageslocalmax_blockmatch/"+filename[-8::])
 
 def helper_is_edge(x, y, imshape, size):
     row, col = imshape[:2] 
@@ -209,15 +209,15 @@ def main(file1, file2):
     # ax.set_axis_off()
     # fig.add_axes(ax)
     # ax.imshow(prev_img)
-    # plt.savefig("images/localmax_blockmatch/downby16/"+file1[-8::])
+    # plt.savefig("../imageslocalmax_blockmatch/downby16/"+file1[-8::])
     
     fig = plt.figure(figsize=(64,48),frameon=False)
     ax = plt.Axes(fig, [0., 0., 1., 1.])
     ax.set_axis_off()
     fig.add_axes(ax)
     ax.imshow(new_img)
-    plt.savefig("images/localmax_blockmatch/downby16/"+file2[-8::])
-    print("images/localmax_blockmatch/downby16/"+file2[-8::])
+    plt.savefig("../imageslocalmax_blockmatch/downby16/"+file2[-8::])
+    print("../imageslocalmax_blockmatch/downby16/"+file2[-8::])
     
 
 # main(file1, file2)

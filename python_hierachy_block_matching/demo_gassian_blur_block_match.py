@@ -142,7 +142,7 @@ f2 = '4068.jpg'
 
 match_dictionary = {}
 method = cv.TM_CCORR_NORMED
-half_template_size = 16
+half_template_size = 18
 # x, y = 100*4, 45*4 #50,70. 55,70
 # x, y = (584*640/1200, 240*640/1200)
 x, y = (439, 353)
@@ -157,7 +157,8 @@ for i, xy in enumerate(xys):
 	xys[i] = [x, y]
 
 first_downsize_by = 1
-half_source_size = half_template_size * 2
+# half_source_size = half_template_size * 2
+half_source_size = 25
 
 xy_list = np.zeros((len(xys), 28, 2))
 
@@ -188,6 +189,10 @@ for ii, i in enumerate(range(4051,4078)): #4078
 			cv.circle(next_img, (int(new_x*first_downsize_by), int(new_y*first_downsize_by)), 3, (255, 255, 0))
 		cv.circle(next_img, (int(next_match_x*first_downsize_by), int(next_match_y*first_downsize_by)), 3, (255, 0, 0))
 	# print('red: '+str((x*first_downsize_by, y*first_downsize_by)))
+
+	for pp in range(num_pts): 
+		x, y = int(xys[pp][0]), int(xys[pp][1])
+		cv.circle(next_img, (x, y), 3, (0, 255, 0))
 
 	# fig = plt.figure(figsize=(14,8),frameon=False)
 	# ax = plt.Axes(fig, [0., 0., 1., 1.])
