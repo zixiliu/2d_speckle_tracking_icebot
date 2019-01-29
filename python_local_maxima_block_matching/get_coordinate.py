@@ -67,8 +67,8 @@ def get_recording():
     # display_prev(File, x, y)
     # pdb.set_trace()
 
-    # ori_path = '../original/'
-    ori_path = 'speckles only/'
+    ori_path = '../images/original/'
+    # ori_path = 'speckles only/'
     ori_files = glob.glob(ori_path+"*.jpg")
     ori_files = sorted(ori_files)
 
@@ -76,7 +76,7 @@ def get_recording():
     x, y = 0,0
     i = 0
     x,y = get_coordinate(ori_files[i], None, x, y)
-    for i in range(1, 20):
+    for i in range(1, 6):
         print(ori_files[i])
         x,y = get_coordinate(ori_files[i], ori_files[i-1], x, y)
         record.append((x, y))
@@ -85,7 +85,7 @@ def get_recording():
     return record
 
 def record_one_speckle():
-    file  = open('manual_records2.txt', 'a')
+    file  = open('manual_records3.txt', 'a')
     record = get_recording()
     file.write(str(record)[1:-1]+'\n')
     # pdb.set_trace()

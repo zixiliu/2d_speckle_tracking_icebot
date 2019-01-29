@@ -69,8 +69,8 @@ def block_match(source, template, method, half_template_size, yy_ul, yy_lr, xx_u
             pdb.set_trace()
         match_ul_y, match_ul_x = pt[0], pt[1]
 
-        prev_match_y = yy_ul + match_ul_y + half_template_size
-        prev_match_x = xx_ul + match_ul_x + half_template_size
+        prev_match_y = yy_ul + match_ul_y + template.shape[0]/2
+        prev_match_x = xx_ul + match_ul_x + template.shape[1]/2
             
     return (prev_match_x, prev_match_y)
 
