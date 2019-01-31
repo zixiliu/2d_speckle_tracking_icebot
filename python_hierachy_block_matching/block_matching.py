@@ -45,16 +45,19 @@ def block_matching_cv(template_gray, source_gray,  method):
         return []
     thresh = 0.9
     maxval = max(res.max(), thresh)
+    # maxval = res.max()
     loc = np.where( res >= maxval) 
     try:
         y,x = loc[0][0], loc[1][0]
         loc = [[y, x]]
     except:
+        print(res.max())
         return []
     return loc
 
 
-def block_match(source, template, method, half_template_size, yy_ul, yy_lr, xx_ul, xx_lr, x,y): 
+def block_match(source, template, method, half_template_size, yy_ul, yy_lr, xx_ul, xx_lr, x,y, \
+                template_yy_ul, template_yy_lr, template_xx_ul, template_xx_lr): 
     prev_match_x, prev_match_y = np.Inf, np.Inf
     if method == 'hog': 
         loc = hog_match(template, source)
@@ -69,8 +72,8 @@ def block_match(source, template, method, half_template_size, yy_ul, yy_lr, xx_u
             pdb.set_trace()
         match_ul_y, match_ul_x = pt[0], pt[1]
 
-        prev_match_y = yy_ul + match_ul_y + template.shape[0]/2
-        prev_match_x = xx_ul + match_ul_x + template.shape[1]/2
+        prev_match_y = yy_ul + match_ul_y + (y-template_yy_ul)
+        prev_match_x = xx_ul + match_ul_x + (x-template_xx_ul)
             
     return (prev_match_x, prev_match_y)
 
