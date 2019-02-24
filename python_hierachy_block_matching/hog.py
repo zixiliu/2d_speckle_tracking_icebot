@@ -109,17 +109,18 @@ def hog_match(template, source):
 
 
 # --------------------------------------------------------------------------- #
-path = '../images/downsamplePlot/down_by_8/'
-files = glob.glob(path+"*.jpg")
-files = sorted(files)
-f1 = '4067.jpg'
-file1 = path+f1
-img = cv.imread(file1)
-gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
-# hist = get_hist(gray)
-# print(hist)
+if __name__ == "__main__":
+    path = '../images/downsamplePlot/down_by_8/'
+    files = glob.glob(path+"*.jpg")
+    files = sorted(files)
+    f1 = '4067.jpg'
+    file1 = path+f1
+    img = cv.imread(file1)
+    gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
+    # hist = get_hist(gray)
+    # print(hist)
 
 
-target = gray[26-7:26+7, 26-7:26+7]
-source =  gray[26-10:26+10, 26-10:26+10]
-hog_match(target, source)
+    target = gray[26-7:26+7, 26-7:26+7]
+    source =  gray[26-10:26+10, 26-10:26+10]
+    hog_match(target, source)

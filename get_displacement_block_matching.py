@@ -1,28 +1,31 @@
 import cv2 as cv
-from block_matching import block_match
-from trace_trajectory import find_match
+from python_hierachy_block_matching.block_matching import block_match
+from python_hierachy_block_matching.trace_trajectory import find_match
 import pdb
 import glob
 import matplotlib.pyplot as plt
 import numpy as np
 from skimage.feature import peak_local_max
 
-
+################################################################################
 ## Global variables 
-path16 = '../images/downsamplePlot/down_by_16/'
-path8 = '../images/downsamplePlot/down_by_8/'
-path4 = '../images/downsamplePlot/down_by_4/'
-path2 = '../images/downsamplePlot/down_by_2/'
-ori_path = '../images/original/'
+################################################################################
+ori_path = 'images/original/'
 ori_files = glob.glob(ori_path+"*.jpg")
 ori_files = sorted(ori_files)
-warp_x = np.load('warpx.npy')
-warp_y = np.load('warpy.npy')
+warp_x = np.load('python_hierachy_block_matching/warpx.npy')
+warp_y = np.load('python_hierachy_block_matching/warpy.npy')
 
 with_warp = True
-blur_window_size = 9#5#49#5
+blur_window_size = 9
 border = 20
 to_remove_outlier= True
+
+################################################################################
+## helper functions
+################################################################################
+''' Calculate the normalized residual by neighbor points' displacement velocity. 
+    Helper function for outlier removal. '''
 def helper_get_normalized_residual(x,y, v_x, v_y, neighbors, velocity): 
     if len(neighbors)> 1: 
         dxy = []
@@ -30,68 +33,33 @@ def helper_get_normalized_residual(x,y, v_x, v_y, neighbors, velocity):
         vel_y = []
         for i,pt in enumerate(neighbors): 
             neighbor_x, neighbor_y = pt[0], pt[1]
-
             dxy=np.sqrt((x-neighbor_x)**2 + (y-neighbor_y)**2)                
             vel_x.append(velocity[i][0])
             vel_y.append(velocity[i][1])
-    
-
-        median_d = np.median(np.array(dxy))    
-        # median_d_x = np.median(np.array(dx))    
-        # median_d_y = np.median(np.array(dy))    
-
-        # epi_x = (-median_d_x+ np.sqrt(median_d_x**2+0.4))/2
-        # epi_y = (-median_d_y+ np.sqrt(median_d_y**2+0.4))/2
+        median_d = np.median(np.array(dxy))
         epi = (-median_d+ np.sqrt(median_d**2+0.4))/2
-
-        # norm_median_x = np.median(vel_x/(dx+epi_x))
-        # norm_median_y = np.median(vel_y/(dy+epi_y))
         norm_median_x = np.median(vel_x/(dxy+epi))
         norm_median_y = np.median(vel_y/(dxy+epi))
-
-        # r_x = abs(v_x/(median_d_x + epi_x) - norm_median_x) / ( np.median(np.abs(vel_x/(dx + epi_x) - norm_median_x)) + epi_x)
-        # r_y = abs(v_y/(median_d_y + epi_y) - norm_median_y) / ( np.median(np.abs(vel_y/(dy + epi_y) - norm_median_y)) + epi_y)
         r_x = abs(v_x/(median_d + epi) - norm_median_x) / ( np.median(np.abs(vel_x/(dxy+epi) - norm_median_x)) + epi)
         r_y = abs(v_y/(median_d + epi) - norm_median_y) / ( np.median(np.abs(vel_y/(dxy+epi)- norm_median_y)) + epi)
-
-        # print(r_x, r_y)
-        # pdb.set_trace()
-
         r = np.sqrt(r_x**2 + r_y**2)
     else: 
         return 0
-
-    # pdb.set_trace()
     return r
 
-def find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_size, half_source_size, method):
-
+'''Given (x, y), find match in previous frame.'''
+def helper_find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_size, half_source_size, method):
     global blur_window_size
+    ## Gaussian Blur
     prev_gaussian = cv.GaussianBlur(prev_gray,(blur_window_size,blur_window_size),0)
     next_gaussian = cv.GaussianBlur(next_gray,(blur_window_size,blur_window_size),0)
-
-    # plt.figure()
-    # plt.subplot(121)
-    # plt.imshow(prev_gray, cmap='gray')
-    # plt.subplot(122)
-    # plt.imshow(prev_gaussian, cmap='gray')
-    # plt.show()
-    # pdb.set_trace()
-
-    ## define template
-    # if  (y-half_template_size < 0) | (y+half_template_size+1 > prev_gray.shape[0]-1) | \
-    #     (x-half_template_size < 0) | (x+half_template_size+1 > prev_gray.shape[1]-1):
-    #     # return np.Inf, np.Inf
-    #     return x,y
+    ## Define template by boundary points
     template_yy_ul, template_yy_lr = max(0,y-half_template_size), min(prev_gray.shape[0],y+half_template_size+1)
     template_xx_ul, template_xx_lr = max(0,x-half_template_size), min(prev_gray.shape[1],x+half_template_size+1)
-
     template = prev_gaussian[template_yy_ul:template_yy_lr, template_xx_ul:template_xx_lr]
-
     ## define source around the previous match
     yy_ul, yy_lr = y-half_source_size, y+half_source_size+1
     xx_ul, xx_lr =  x-half_source_size, x+half_source_size+1
-
     if yy_ul < 0: 
         yy_ul = 0
     if xx_ul < 0: 
@@ -100,39 +68,20 @@ def find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_size, hal
         yy_lr = prev_gray.shape[0]-1
     if xx_lr > prev_gray.shape[1]-1: 
         xx_lr = prev_gray.shape[1]-1
-
     source = next_gaussian[yy_ul:yy_lr, xx_ul:xx_lr]
-
-    # plt.figure()
-    # plt.subplot(121)
-    # plt.imshow(template)
-    # plt.subplot(122)
-    # plt.imshow(source)
-    # plt.show()
-    # pdb.set_trace()
-
+    ## Block match
     (next_match_x, next_match_y) = block_match(source, template, method, half_template_size, \
                                     yy_ul, yy_lr, xx_ul, xx_lr, x,y,\
                                     template_yy_ul, template_yy_lr, template_xx_ul, template_xx_lr)
-
     if next_match_x == np.Inf:
-        
-        # fig, (ax1, ax2) = plt.subplots(1,2,sharex=True, sharey=True)
-        # ax1.imshow(template)
-        # ax1.set_title('Template')
-        # ax2.imshow(source)
-        # ax2.set_title('Source')
-        # plt.show()
-        
-        # pdb.set_trace()
         print("no match!")
         return np.Inf, np.Inf
-
     return next_match_x, next_match_y
 
-def get_tracking_points():
+''' Define the points to track by pixels with high intensity in the downsampled initial frame. 
+    NOTE: contains magic numbers that encodes the downsample ratio that must be changed accordingly.'''
+def helper_get_tracking_points():
     global with_warp, border
-    # '''Get points of interest based on intensity in downsampled by 8 images (for limited number to track)'''
     f = ori_path + '4051.jpg'
     img = cv.imread(f)
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
@@ -143,8 +92,7 @@ def get_tracking_points():
     else:
         img2 = cv.pyrDown(gray)
     img4 = cv.pyrDown(img2)
-    gray = cv.pyrDown(img4)
-    # gray=img4
+    gray = cv.pyrDown(img4) 
 
     _, thresh = cv.threshold(gray,80,1,cv.THRESH_BINARY)
     
@@ -153,8 +101,6 @@ def get_tracking_points():
         for x in range(thresh.shape[1]):
             if thresh[y,x] > 0:
                 coordinates.append([x*8, y*8])
-                # coordinates.append([x*4, y*4])
-                # coordinates.append([x, y])
 
     neighbors = {} # Get neighbors by index
     d_sq = 128 # distance thresh
@@ -171,34 +117,29 @@ def get_tracking_points():
                     neighbors[i].append(j)
     return coordinates, neighbors
 
+################################################################################
+## Global functions
+################################################################################
 def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_size = 23):
 
     global with_warp, blur_window_size, border
-    xys, neighbors = get_tracking_points()
-
+    xys, neighbors = helper_get_tracking_points()
     method = cv.TM_CCORR_NORMED#cv.TM_CCOEFF_NORMED #cv.TM_CCORR_NORMED
     
-    # x, y = (439, 353)
-    # x, y = x*640/1200, y*640/1200
-    # xys = [[584, 240], [565, 266], [534, 285], [487, 321], [439, 353], [402, 389], [412, 448], \
-    # 		[458, 484], [490, 510], [548, 556], [569, 576], [600, 622], [635, 585], [668, 490], \
-    # 		[686, 424], [711, 369], [751, 342], [756, 318], [716, 271], [634, 288]]
     num_pts = len(xys)
     for i, xy in enumerate(xys): 
         x, y = xy[0], xy[1]
         # x, y = x*640/1200, y*640/1200
         xys[i] = [x, y]
     
-
     xy_list = np.zeros((len(xys), 28, 2))
     xy_list[:,0,:] = xys
 
     for ii, i in enumerate(range(4051,4072)): #4078
         f1 = str(i)+'.jpg'
         f2 = str(i+1)+'.jpg'
-        if make_plots:
-            print('----')
-            print(f2)
+        print('----\n'+f2)
+            
 
         ori_file = ori_path + f2
         ori_prev = ori_path + f1
@@ -232,19 +173,16 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
         for j in range(num_pts):
             x, y = int(xy_list[j, ii, 0]), int(xy_list[j, ii, 1])
 
-            next_match_x, next_match_y = find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_size, half_source_size, method)
+            next_match_x, next_match_y = helper_find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_size, half_source_size, method)
 
             if next_match_x == np.Inf: 
                 # print("TODO: handle no match cases")
                 next_match_x, next_match_y = x, y
-                # pdb.set_trace()
+            
 
             x, y = next_match_x, next_match_y
             xy_list[j,ii+1,:] = [x, y] 
             
-        # if f2=='4057.jpg':
-        #     pdb.set_trace()
-
         for j in range(num_pts): 
             ## Smooth outlier
             outlier = False
@@ -289,25 +227,16 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
                     cv.circle(next_img, (int(x), int(y)), 2, (0, 255, 0))
                     cv.arrowedLine(next_img, (int(prev_x), int(prev_y)), (int(x), int(y)), (0,255,0), 1, tipLength=0.3)
                 else:
-                    # if (j == 50) | (j==91) | (j == 125)| (j == 150) | (j == 203):
-                    #     cv.circle(next_img, (int(x), int(y)), 5, (255, 100, 0))
-                    # if (j == 89) | (j == 131) | (j==132) | (j == 278): 
-                    #     cv.circle(next_img, (int(x), int(y)), 5, (0, 255, 0))    
                     cv.circle(next_img, (int(x), int(y)), 2, (255, 255, 0))
         cv.circle(next_img, (int((xy_list[89,ii+1,0]+xy_list[131,ii+1,0]+xy_list[132,ii+1,0]+xy_list[278,ii+1,0])/4), \
                     int((xy_list[89,ii+1,1]+xy_list[131,ii+1,1]+xy_list[132,ii+1,1]+xy_list[278,ii+1,1])/4)), 5, (0, 255, 0))  
 
-            # if f2=='4071.jpg':
-            #     cv.circle(next_img, (int(xy_list[j, 0, 0]), int(xy_list[j, 0, 1])), 3, (255, 0, 0))
-            #     cv.arrowedLine(next_img, (int(xy_list[j, 0, 0]), int(xy_list[j, 0, 1])), (int(x), int(y)), (0,255,0), 1, tipLength=0.3)
-
-        # plt.imsave('../images/gaussian_blur/'+f2, next_img)
         if make_plots:
             if with_warp:
                 plt.subplot(133)
             plt.imshow(next_img)
             # pdb.set_trace()
-            plt.savefig('../images/gaussian_blur/'+f2)
+            plt.savefig('images/block_matching/'+f2)
 
 
 
@@ -345,7 +274,7 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
     for j in range(num_pts):
 
         x, y = int(xy_list[j, 0, 0]), int(xy_list[j, 0, 1])
-        next_match_x, next_match_y = find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_size, half_source_size, method)
+        next_match_x, next_match_y = helper_find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_size, half_source_size, method)
 
         if next_match_x != np.Inf: 
             
@@ -362,14 +291,14 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
             distances.append(np.sqrt((int(xy_list[j, ii, 0])- next_match_x)**2 + \
                                 (int(xy_list[j, ii, 1])-next_match_y)**2))
 
-    # plt.imsave('../images/gaussian_blur/4052_4071.jpg', next_img)
+   
     if make_plots:
         plt.subplot(122)
         plt.imshow(next_img)
-        plt.savefig('../images/gaussian_blur/4052_4071.jpg')
+        plt.savefig('images/block_matching/4052_4071.jpg')
 
     distances = np.array(distances)
-    file  = open('../images/gaussian_blur/error.txt', 'a')
+    file  = open('images/block_matching/error.txt', 'a')
     file.write('Distances between tracked location and direct step location in pixel:\n')
     file.write('half template size: %.1f, half source size: %.1f\n' % (half_template_size, half_source_size))
     file.write('Mean: %.4f\n' % distances.mean())
@@ -378,79 +307,13 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
     file.write('Standard Deviation: %.4f\n' % distances.std())
 
 
-    np.save('../images/gaussian_blur/tracked_pts.npy', xy_list)
-    np.save('../images/gaussian_blur/neighbors.npy', neighbors)
+    np.save('images/block_matching/tracked_pts.npy', xy_list)
+    np.save('images/block_matching/neighbors.npy', neighbors)
     
 
     return distances.mean(), distances.std()
 
 if __name__ == "__main__":
-    # execute only if run as a script
-
-    # res = np.full((26, 7, 2), np.inf)
-
-    # half_temp_sizes = np.arange(15, 41)
-    # for idxi, i in enumerate(half_temp_sizes): 
-    #     for idxj, j in enumerate(np.arange(5,12)):
-    #         half_template_size = i
-    #         half_source_size = i+j
-    #         # print(half_template_size, half_source_size)
-    #         mean, std = gaussian_blur_bm(half_template_size=half_template_size, half_source_size=half_source_size)
-    #         res[idxi, idxj, :] = [mean, std]
-    #         print(half_template_size, half_source_size, mean, std)
-    
-    # np.save('../images/gaussian_blur/gridsearch_result_full2.npy', res)
-    # # pdb.set_trace()
-
-    # min_mean = res[:,:,0].min()
-    # min_std = res[:,:,1].min()
-
-    # min_mean_loc = np.where(res == min_mean)
-    # print('min mean at half_temp_size=%.1f, half source size=%.1f' % \
-    #                     (half_temp_sizes[min_mean_loc[0][0]], \
-    #                         half_temp_sizes[min_mean_loc[0][0]]+np.arange(5,11)[min_mean_loc[1][0]]))
-
-    # min_std_loc = np.where(res == min_std)
-    # print('min std at half_temp_size=%.1f, half source size=%.1f' % \
-    #                     (half_temp_sizes[min_std_loc[0][0]], \
-    #                         half_temp_sizes[min_std_loc[0][0]]+np.arange(5,11)[min_std_loc[1][0]]))
-
-
-    # plt.figure()
-    # plt.imshow(res)
-    # plt.show()
-
-    # res = np.load('../images/gaussian_blur/gridsearch_result_full2.npy')
-    # pdb.set_trace()
-    # plt.figure()
-    # plt.subplot(121)
-    # plt.imshow(res[:,:,0])
-    # plt.title('mean')
-    # plt.subplot(122)
-    # plt.imshow(res[:,:,1])
-    # plt.title('std')
-    
-    # plt.show()
-
-    # pdb.set_trace()
-
-
     half_template_size = 30
     half_source_size = 38
-    print("hi")
-    # mean, std = gaussian_blur_bm(half_template_size=half_template_size, half_source_size=half_source_size, make_plots=True)
-
-
-# (Pdb) min_mean = res[:,:,0].min()
-# (Pdb) min_mean
-# 4.361738954332011
-
-# (Pdb) min_std
-# 3.0604626020052077
-
-# (Pdb) np.where(res == min_mean)
-# (array([20]), array([4]), array([0]))
-# (Pdb) np.where(res == min_std)
-# (array([20]), array([4]), array([1]))
-
-#--> half_template_size = 25, half_source_size = 34
+    mean, std = gaussian_blur_bm(half_template_size=half_template_size, half_source_size=half_source_size, make_plots=True)
