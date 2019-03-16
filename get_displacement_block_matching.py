@@ -8,7 +8,7 @@ import numpy as np
 from skimage.feature import peak_local_max
 
 ################################################################################
-## Global variables 
+## Global variables
 ################################################################################
 ori_path = 'images/original/'
 ori_files = glob.glob(ori_path+"*.jpg")
@@ -24,16 +24,16 @@ to_remove_outlier= True
 ################################################################################
 ## helper functions
 ################################################################################
-''' Calculate the normalized residual by neighbor points' displacement velocity. 
+''' Calculate the normalized residual by neighbor points' displacement velocity.
     Helper function for outlier removal. '''
-def helper_get_normalized_residual(x,y, v_x, v_y, neighbors, velocity): 
-    if len(neighbors)> 1: 
+def helper_get_normalized_residual(x,y, v_x, v_y, neighbors, velocity):
+    if len(neighbors)> 1:
         dxy = []
         vel_x = []
         vel_y = []
-        for i,pt in enumerate(neighbors): 
+        for i,pt in enumerate(neighbors):
             neighbor_x, neighbor_y = pt[0], pt[1]
-            dxy=np.sqrt((x-neighbor_x)**2 + (y-neighbor_y)**2)                
+            dxy=np.sqrt((x-neighbor_x)**2 + (y-neighbor_y)**2)
             vel_x.append(velocity[i][0])
             vel_y.append(velocity[i][1])
         median_d = np.median(np.array(dxy))
@@ -43,7 +43,7 @@ def helper_get_normalized_residual(x,y, v_x, v_y, neighbors, velocity):
         r_x = abs(v_x/(median_d + epi) - norm_median_x) / ( np.median(np.abs(vel_x/(dxy+epi) - norm_median_x)) + epi)
         r_y = abs(v_y/(median_d + epi) - norm_median_y) / ( np.median(np.abs(vel_y/(dxy+epi)- norm_median_y)) + epi)
         r = np.sqrt(r_x**2 + r_y**2)
-    else: 
+    else:
         return 0
     return r
 
@@ -60,13 +60,13 @@ def helper_find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_si
     ## define source around the previous match
     yy_ul, yy_lr = y-half_source_size, y+half_source_size+1
     xx_ul, xx_lr =  x-half_source_size, x+half_source_size+1
-    if yy_ul < 0: 
+    if yy_ul < 0:
         yy_ul = 0
-    if xx_ul < 0: 
+    if xx_ul < 0:
         xx_ul = 0
     if yy_lr > prev_gray.shape[0]-1:
         yy_lr = prev_gray.shape[0]-1
-    if xx_lr > prev_gray.shape[1]-1: 
+    if xx_lr > prev_gray.shape[1]-1:
         xx_lr = prev_gray.shape[1]-1
     source = next_gaussian[yy_ul:yy_lr, xx_ul:xx_lr]
     ## Block match
@@ -78,24 +78,24 @@ def helper_find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_si
         return np.Inf, np.Inf
     return next_match_x, next_match_y
 
-''' Define the points to track by pixels with high intensity in the downsampled initial frame. 
+''' Define the points to track by pixels with high intensity in the downsampled initial frame.
     NOTE: contains magic numbers that encodes the downsample ratio that must be changed accordingly.'''
 def helper_get_tracking_points():
     global with_warp, border
     f = ori_path + '4051.jpg'
     img = cv.imread(f)
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    if with_warp: 
+    if with_warp:
         gray_warp = cv.remap(gray, warp_x, warp_y, cv.INTER_LINEAR)
         gray_warp = cv.copyMakeBorder(gray_warp, border, border, border, border, cv.BORDER_CONSTANT)
         img2 = cv.pyrDown(gray_warp)
     else:
         img2 = cv.pyrDown(gray)
     img4 = cv.pyrDown(img2)
-    gray = cv.pyrDown(img4) 
+    gray = cv.pyrDown(img4)
 
     _, thresh = cv.threshold(gray,80,1,cv.THRESH_BINARY)
-    
+
     coordinates = []
     for y in range(thresh.shape[0]):
         for x in range(thresh.shape[1]):
@@ -104,7 +104,7 @@ def helper_get_tracking_points():
 
     neighbors = {} # Get neighbors by index
     d_sq = 128 # distance thresh
-    for i, xy in enumerate(coordinates): 
+    for i, xy in enumerate(coordinates):
         x, y = xy[0], xy[1]
         neighbors[i] = []
         for j in range(len(coordinates)):
@@ -125,21 +125,22 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
     global with_warp, blur_window_size, border
     xys, neighbors = helper_get_tracking_points()
     method = cv.TM_CCORR_NORMED#cv.TM_CCOEFF_NORMED #cv.TM_CCORR_NORMED
-    
+
     num_pts = len(xys)
-    for i, xy in enumerate(xys): 
+    for i, xy in enumerate(xys):
         x, y = xy[0], xy[1]
         # x, y = x*640/1200, y*640/1200
         xys[i] = [x, y]
-    
+
     xy_list = np.zeros((len(xys), 28, 2))
     xy_list[:,0,:] = xys
+    center_pt = np.zeros((28, 2))
 
     for ii, i in enumerate(range(4051,4072)): #4078
         f1 = str(i)+'.jpg'
         f2 = str(i+1)+'.jpg'
         print('----\n'+f2)
-            
+
 
         ori_file = ori_path + f2
         ori_prev = ori_path + f1
@@ -152,7 +153,7 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
         if with_warp:
             prev_gray = cv.remap(prev_gray, warp_x, warp_y, cv.INTER_LINEAR)
             next_gray = cv.remap(next_gray, warp_x, warp_y, cv.INTER_LINEAR)
-        
+
             prev_gray = cv.copyMakeBorder(prev_gray, border, border, border, border, cv.BORDER_CONSTANT)
             prev_img = cv.cvtColor(prev_gray,cv.COLOR_GRAY2RGB)
 
@@ -175,27 +176,27 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
 
             next_match_x, next_match_y = helper_find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_size, half_source_size, method)
 
-            if next_match_x == np.Inf: 
+            if next_match_x == np.Inf:
                 # print("TODO: handle no match cases")
                 next_match_x, next_match_y = x, y
-            
+
 
             x, y = next_match_x, next_match_y
-            xy_list[j,ii+1,:] = [x, y] 
-            
-        for j in range(num_pts): 
+            xy_list[j,ii+1,:] = [x, y]
+
+        for j in range(num_pts):
             ## Smooth outlier
             outlier = False
             x, y = xy_list[j,ii+1,0], xy_list[j,ii+1,1]
-            if to_remove_outlier: 
+            if to_remove_outlier:
                 v_x, v_y = (xy_list[j,ii+1,0]-xy_list[j,ii,0])/40., \
                             (xy_list[j,ii+1,1]-xy_list[j,ii,1])/40.
                 neighbor_idxs = neighbors[j]
-                if len(neighbor_idxs) > 0: 
+                if len(neighbor_idxs) > 0:
 
                     neighbor_xys = []
                     neighbor_vel = []
-                    for idx in neighbor_idxs: 
+                    for idx in neighbor_idxs:
                         neighbor_xys.append(xy_list[idx,ii+1,:])
                         neighbor_vel.append((xy_list[idx,ii+1,:] - xy_list[idx,ii,:])/40.)
                     # if (ii == 3) & (xy_list[j,ii+1,0] > 30) & (xy_list[j,ii+1,1] > 30):
@@ -206,7 +207,7 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
                         # pdb.set_trace()
                         if make_plots:
                             cv.circle(next_img, (int(x), int(y)), 3, (0, 255, 255))
-                        
+
                         vxy = np.array(neighbor_vel).mean(axis=0)
                         xy_list[j,ii+1,:] = vxy*40. + xy_list[j,ii,:]
                         x, y = xy_list[j,ii+1,0], xy_list[j,ii+1,1]
@@ -217,10 +218,10 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
 
                         outlier=True
             # # Plot
-            # first_x, first_y = xy_list[j, 0, 0], xy_list[j, 0, 1] 
+            # first_x, first_y = xy_list[j, 0, 0], xy_list[j, 0, 1]
             # cv.circle(next_img, (int(first_x), int(first_y)), 3, (0, 255, 0))
             if make_plots:
-                prev_x, prev_y = xy_list[j, ii, 0], xy_list[j, ii, 1] 
+                prev_x, prev_y = xy_list[j, ii, 0], xy_list[j, ii, 1]
                 cv.arrowedLine(next_img, (int(prev_x), int(prev_y)), (int(x), int(y)), (255,0,0), 1, tipLength=0.3)
 
                 if outlier==True:
@@ -229,7 +230,10 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
                 else:
                     cv.circle(next_img, (int(x), int(y)), 2, (255, 255, 0))
         cv.circle(next_img, (int((xy_list[89,ii+1,0]+xy_list[131,ii+1,0]+xy_list[132,ii+1,0]+xy_list[278,ii+1,0])/4), \
-                    int((xy_list[89,ii+1,1]+xy_list[131,ii+1,1]+xy_list[132,ii+1,1]+xy_list[278,ii+1,1])/4)), 5, (0, 255, 0))  
+                    int((xy_list[89,ii+1,1]+xy_list[131,ii+1,1]+xy_list[132,ii+1,1]+xy_list[278,ii+1,1])/4)), 5, (0, 255, 0))
+
+        center_pt[ii, :] = [int((xy_list[89,ii+1,0]+xy_list[131,ii+1,0]+xy_list[132,ii+1,0]+xy_list[278,ii+1,0])/4), \
+                    int((xy_list[89,ii+1,1]+xy_list[131,ii+1,1]+xy_list[132,ii+1,1]+xy_list[278,ii+1,1])/4)]
 
         if make_plots:
             if with_warp:
@@ -258,13 +262,13 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
     if with_warp:
         prev_gray = cv.remap(prev_gray, warp_x, warp_y, cv.INTER_LINEAR)
         next_gray = cv.remap(next_gray, warp_x, warp_y, cv.INTER_LINEAR)
-    
+
         prev_gray = cv.copyMakeBorder(prev_gray, border, border, border, border, cv.BORDER_CONSTANT)
         prev_img = cv.cvtColor(prev_gray,cv.COLOR_GRAY2RGB)
 
         next_gray = cv.copyMakeBorder(next_gray, border, border, border, border, cv.BORDER_CONSTANT)
         next_img = cv.cvtColor(next_gray,cv.COLOR_GRAY2RGB)
-    
+
     plt.figure(figsize=(14,12))
     plt.subplot(121)
     plt.imshow(next_img)
@@ -276,22 +280,22 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
         x, y = int(xy_list[j, 0, 0]), int(xy_list[j, 0, 1])
         next_match_x, next_match_y = helper_find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_size, half_source_size, method)
 
-        if next_match_x != np.Inf: 
-            
+        if next_match_x != np.Inf:
+
             if make_plots:
-                prev_x, prev_y = xy_list[j, 0, 0], xy_list[j, 0, 1] 
+                prev_x, prev_y = xy_list[j, 0, 0], xy_list[j, 0, 1]
                 cv.arrowedLine(next_img, (int(prev_x), int(prev_y)), \
                             (int(next_match_x), int(next_match_y)), (255,0,0), 1, tipLength=0.3)
 
                 cv.circle(next_img, (int(next_match_x), int(next_match_y)), 1, (255, 255, 0))
-            
+
                 cv.circle(next_img, (int(xy_list[j, ii, 0]), int(xy_list[j, ii, 1])), 1, (255, 0, 0))
                 cv.arrowedLine(next_img, (int(xy_list[j, ii, 0]), int(xy_list[j, ii, 1])), (int(next_match_x), int(next_match_y)), (0,255,0), 1, tipLength=0.3)
-            
+
             distances.append(np.sqrt((int(xy_list[j, ii, 0])- next_match_x)**2 + \
                                 (int(xy_list[j, ii, 1])-next_match_y)**2))
 
-   
+
     if make_plots:
         plt.subplot(122)
         plt.imshow(next_img)
@@ -309,7 +313,9 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
 
     np.save('images/block_matching/tracked_pts.npy', xy_list)
     np.save('images/block_matching/neighbors.npy', neighbors)
-    
+    np.save('images/block_matching/center_pt.npy', center_pt)
+
+
 
     return distances.mean(), distances.std()
 
