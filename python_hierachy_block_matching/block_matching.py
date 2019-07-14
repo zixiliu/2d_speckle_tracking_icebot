@@ -43,6 +43,7 @@ def block_matching_cv(template_gray, source_gray,  method):
         res = cv.matchTemplate(source_gray, template_gray, method) 
     except cv.error: 
         return []
+
     thresh = 0.9
     maxval = max(res.max(), thresh)
     # maxval = res.max()

@@ -6,18 +6,37 @@ import pdb
 ################################################################################
 ## Global variables
 ################################################################################
-pts = np.load('images/block_matching/tracked_pts.npy')
-pts = pts[:,0:22,:] # strip out the 0s in the end
-neighbors = np.load('images/block_matching/neighbors.npy')
+# pts = np.load('images/block_matching/tracked_pts.npy')
+# pts = pts[:,0:22,:] # strip out the 0s in the end
+# neighbors = np.load('images/block_matching/neighbors.npy')
+# neighbors = neighbors.item() # dictionary of indices of pts within distances of 128 pixels
+# center_pt = np.load('images/block_matching/center_pt.npy')
+# center_pt = center_pt[0:22,:] # strip out the 0s in the end
+ori_path='validation_simulation/'
+# ori_path = 'images/original/'
+save_img_path = ori_path + 'strain/'
+save_path = ori_path
+
+# starting_img_num = 4065 #4051
+# ending_img_num = 4084 #4072
+starting_img_num = 0
+ending_img_num = 19
+
+pts = np.load(ori_path+'tracked_pts.npy')
+pts = pts[:,0:(ending_img_num-starting_img_num),:] # strip out the 0s in the end
+neighbors = np.load(ori_path+'neighbors.npy')
 neighbors = neighbors.item() # dictionary of indices of pts within distances of 128 pixels
-center_pt = np.load('images/block_matching/center_pt.npy')
-center_pt = center_pt[0:22,:] # strip out the 0s in the end
+center_pt = np.load(ori_path+'center_pt.npy')
+center_pt = center_pt[0:(ending_img_num-starting_img_num),:] # strip out the 0s in the end
+
+with_warp = False
+if with_warp:
+    warp_x = np.load('python_hierachy_block_matching/warpx.npy')
+    warp_y = np.load('python_hierachy_block_matching/warpy.npy')
 
 
-warp_x = np.load('python_hierachy_block_matching/warpx.npy')
-warp_y = np.load('python_hierachy_block_matching/warpy.npy')
 
-ori_path = 'images/original/'
+
 border = 20
 delaunay_color = (255, 255, 0)
 big_triangle_color = (255, 0, 0)
@@ -64,15 +83,17 @@ mycmap = transparent_cmap(plt.cm.Reds)
 ################################################################################
 class Triangle:
     def __init__(self, pt1, pt2, pt3, v1, v2, v3):
-        self.pt1 = pt1
-        self.pt2 = pt2
-        self.pt3 = pt3
+        self.pt1 = (int(pt1[0]),int(pt1[1]))
+        self.pt2 = (int(pt2[0]),int(pt2[1]))
+        self.pt3 = (int(pt3[0]),int(pt3[1]))
         self.v1 = v1
         self.v2 = v2
         self.v3 = v3
 
     ''' Returns True if successfully replaced and False otherwise'''
     def replace(self, old_pt, new_pt, new_v):
+        old_pt = (int(old_pt[0]),int(old_pt[1]))
+        new_pt = (int(new_pt[0]),int(new_pt[1]))
         if self.pt1 == old_pt:
             self.pt1 = new_pt
             self.v1 = new_v
@@ -86,6 +107,8 @@ class Triangle:
             self.pt3 = new_pt
             self.v3 = new_v
             return True
+        print("about to return error in replacing a point in triangle")
+        pdb.set_trace()
         return False
 
     def boundary(self):
@@ -143,11 +166,14 @@ class Triangle:
             return (False, (np.Inf, np.Inf))
 
 ################################################################################
-f = ori_path + '4051.jpg'
+# f = ori_path + '4051.jpg'
+f = ori_path + str(starting_img_num) + '.jpg'
 ori = cv.imread(f)
-warp = cv.remap(ori, warp_x, warp_y, cv.INTER_LINEAR)
-warp = cv.copyMakeBorder(warp, border, border, border, border, cv.BORDER_CONSTANT)
-
+if with_warp:
+    warp = cv.remap(ori, warp_x, warp_y, cv.INTER_LINEAR)
+    warp = cv.copyMakeBorder(warp, border, border, border, border, cv.BORDER_CONSTANT)
+else:
+    warp = ori.copy()
 ## Delaunay triangularization of points in the first frame
 size = ori.shape
 rect = (0, 0, size[1], size[0])
@@ -205,6 +231,7 @@ radial = np.zeros((pts.shape[1]-1, warp.shape[0], warp.shape[1]))
 circumferential = np.zeros((pts.shape[1]-1, warp.shape[0], warp.shape[1]))
 # pdb.set_trace()
 ## Get displacement and update key
+pdb.set_trace()
 for i in range(1, pts.shape[1]): # for each frame
     for j in range(pts.shape[0]):
         point = (pts[j, i, 0], pts[j, i, 1])
@@ -241,15 +268,11 @@ for i in range(1, pts.shape[1]): # for each frame
                     displacement_field[i-1, yy, xx, :] = [v[0], v[1]]
                     # pdb.set_trace()
         # pdb.set_trace()
-
-
-
-
     ## smooth out the left out pixels
     # pdb.set_trace()
     # displacement_field[i-1, :, :, 0] = cv.GaussianBlur(displacement_field[i-1, :, :, 0], (11,11),0)
     # displacement_field[i-1, :, :, 1] = cv.GaussianBlur(displacement_field[i-1, :, :, 1], (11,11),0)
-    center = center_pt[i]
+    center = center_pt[i,:]
 
 
     # pdb.set_trace()
@@ -270,9 +293,10 @@ for i in range(1, pts.shape[1]): # for each frame
                 gamma_xy[i-1, xx, yy] = displacement_field[i-1, xx, yy+1, 0] - displacement_field[i-1, xx, yy, 0] + \
                                         displacement_field[i-1, xx+1, yy, 1] - displacement_field[i-1, xx, yy, 1]
                 from_center = [xx-center[0], yy-center[1]]
-                if np.sqrt(from_center[0]**2 + from_center[1]**2) != 0:
-                    cos_theta = from_center[0]/np.sqrt(from_center[0]**2 + from_center[1]**2)
-                    sin_theta = np.sqrt(1-cos_theta**2)
+                r = from_center[0]**2 + from_center[1]**2
+                if np.sqrt(r) != 0:
+                    cos_theta = from_center[0]/r
+                    sin_theta = from_center[1]/r#np.sqrt(1-cos_theta**2)#from_center[1]/r
                     radial[i-1, xx, yy] = epsilon_x[i-1, xx, yy] * cos_theta**2 + gamma_xy[i-1, xx, yy]*cos_theta*sin_theta + epsilon_y[i-1, xx, yy]*sin_theta**2
                     circumferential[i-1, xx, yy] = epsilon_x[i-1, xx, yy] * sin_theta**2 - gamma_xy[i-1, xx, yy]*cos_theta*sin_theta + epsilon_y[i-1, xx, yy]*cos_theta**2
 
@@ -282,21 +306,40 @@ for i in range(1, pts.shape[1]): # for each frame
             except:
                 pdb.set_trace()
 
-    # pdb.set_trace()
-    f = ori_path + str(4051+i)+'.jpg'
+    f = ori_path + str(starting_img_num+i)+'.jpg'
     print(f)
     img = cv.imread(f)
-    warp = cv.remap(img, warp_x, warp_y, cv.INTER_LINEAR)
-    warp = cv.copyMakeBorder(warp, border, border, border, border, cv.BORDER_CONSTANT)
+    if with_warp:
+        warp = cv.remap(img, warp_x, warp_y, cv.INTER_LINEAR)
+        warp = cv.copyMakeBorder(warp, border, border, border, border, cv.BORDER_CONSTANT)
 
     ## Make strain masks
     mask_radial = np.zeros((warp.shape[0], warp.shape[1], 3))
-    mask_radial[:,:,0] = np.where(radial[i-1,:,:]>=0,radial[i-1,:,:],0)/12.5*255
-    mask_radial[:,:,2] = np.where(radial[i-1,:,:]<0,-radial[i-1,:,:],0)/12.5*255
+    print('r',radial[i-1,:,:].max(), radial[i-1,:,:].min())
+    if radial[i-1,:,:].max() == 0:
+        pdb.set_trace()
+    mask_radial[:,:,0] = np.where(radial[i-1,:,:]>=0,radial[i-1,:,:],0)/0.005*255#/12.5*255
+    mask_radial[:,:,2] = np.where(radial[i-1,:,:]<0,-radial[i-1,:,:],0)/0.005*255#/12.5*255
 
     mask_circ = np.zeros((warp.shape[0], warp.shape[1], 3))
-    mask_circ[:,:,0] = np.where(circumferential[i-1,:,:]>=0,circumferential[i-1,:,:],0)/12.5*255
-    mask_circ[:,:,2] = np.where(circumferential[i-1,:,:]<0,-circumferential[i-1,:,:],0)/12.5*255
+    mask_circ[:,:,0] = np.where(circumferential[i-1,:,:]>=0,circumferential[i-1,:,:],0)/0.005*255#/12.5*255
+    mask_circ[:,:,2] = np.where(circumferential[i-1,:,:]<0,-circumferential[i-1,:,:],0)/0.005*255#/12.5*255
+    print('c',circumferential[i-1,:,:].max(), circumferential[i-1,:,:].min())
+
+    triangle_mask = np.zeros((warp.shape[0], warp.shape[1], 3))
+    ## draw triangles
+    line_color = (255,255,0)
+    for t in all_triangles:
+        pt1,pt2,pt3 = t.pt1, t.pt2, t.pt3
+        cv.line(triangle_mask, pt1, pt2, line_color, 1)
+        cv.line(triangle_mask, pt3, pt2, line_color, 1)
+        cv.line(triangle_mask, pt1, pt3, line_color, 1)
+        # cv.line(mask_radial, pt1, pt2, line_color, 1)
+        # cv.line(mask_radial, pt3, pt2, line_color, 1)
+        # cv.line(mask_radial, pt1, pt3, line_color, 1)
+        # cv.line(mask_circ, pt1, pt2, line_color, 1)
+        # cv.line(mask_circ, pt3, pt2, line_color, 1)
+        # cv.line(mask_circ, pt1, pt3, line_color, 1)
 
     ## Draw points
     # pt_mask = np.zeros((warp.shape[0], warp.shape[1], 3))
@@ -308,26 +351,50 @@ for i in range(1, pts.shape[1]): # for each frame
         cv.circle(mask_circ, (int(point[0]), int(point[1])), 2, (255,255,0))
         cv.arrowedLine(mask_circ, (int(prev_pt[0]), int(prev_pt[1])), (int(point[0]), int(point[1])), (0,255,0), 1, tipLength=0.3)
 
-    cv.circle(mask_radial, (int(center_pt[i,0]), int(center_pt[i,1])), 2, (0,255,0))
-    cv.circle(mask_circ, (int(center_pt[i,0]), int(center_pt[i,1])), 2, (0,255,0))
+    cv.circle(mask_radial, (int(center[0]), int(center[1])), 3, (0,255,0))
+    cv.circle(mask_circ, (int(center[0]), int(center[1])), 3, (0,255,0))
 
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[15,10])
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=[25,10])
     # fig, ax1 = plt.subplots(1, 1, figsize=[10,15])
     ax1.imshow(warp)
     # cb = ax1.contourf(radial[i-1,:,:], cmap='bwr',alpha = 0.5 , extend='both', vmin=-12.5, vmax=12.5)
     # # cb = ax1.contourf(dismag, cmap='bwr',alpha = 0.5 , extend='both')
     # plt.colorbar(cb,ax=ax1)
-    ax1.imshow(mask_radial,alpha=0.5)
+    # ax1.imshow(triangle_mask,alpha=0.4)
+    ax1.imshow(mask_radial,alpha=0.6)
     ax1.set_title('Radial Strain',fontsize=16)
 
     ax2.imshow(warp)
-    ax2.imshow(mask_circ,alpha=0.5)
+    # ax2.imshow(triangle_mask,alpha=0.4)
+    ax2.imshow(mask_circ,alpha=0.6)
     ax2.set_title('Circumferential Strain',fontsize=16)
 
-    # plt.show()
+    ax3.imshow(warp)
+    ax3.imshow(triangle_mask,alpha=0.5)
+    ax3.set_title('Trianglization',fontsize=16)
+
+    plt.savefig(save_img_path+str(starting_img_num+i)+'.jpg')
+
+    mask_dis0 = np.zeros((warp.shape[0], warp.shape[1], 3))
+    mask_dis0[:,:,0] = np.where(displacement_field[i-1,:,:,0]>=0,displacement_field[i-1,:,:,0],0)/8.*255
+    mask_dis0[:,:,2] = np.where(displacement_field[i-1,:,:,0]<0,-displacement_field[i-1,:,:,0],0)/8.*255
+    # print(mask_dis0.max(), mask_dis0.min())
+
+    mask_dis1 = np.zeros((warp.shape[0], warp.shape[1], 3))
+    mask_dis1[:,:,0] = np.where(displacement_field[i-1,:,:,1]>=0,displacement_field[i-1,:,:,1],0)/8.*255
+    mask_dis1[:,:,2] = np.where(displacement_field[i-1,:,:,1]<0,-displacement_field[i-1,:,:,1],0)/8.*255
+    # print(mask_dis1.max(), mask_dis1.min())
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[15,10])
+    ax1.imshow(warp)
+    ax1.imshow(mask_dis0,alpha=0.5)
+    ax1.set_title('displacement field x direction')
+    ax2.imshow(warp)
+    ax2.imshow(mask_dis1,alpha=0.5)
+    ax2.set_title('displacement field y direction')
+    plt.savefig(ori_path+'displacement_field/'+str(starting_img_num+i)+'.jpg')
     # pdb.set_trace()
-    plt.savefig('images/block_matching/'+str(4051+i)+'.jpg')
 
 
 

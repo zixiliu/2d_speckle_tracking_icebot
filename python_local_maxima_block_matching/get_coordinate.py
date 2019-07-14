@@ -4,15 +4,47 @@ from PIL import Image, ImageTk
 import cv2 as cv
 import glob
 import pdb
+import numpy as np
+
 
 
 green = '#000fff000'
 red = '#fff000000'
 
-def get_coordinate(File, prev_file, prev_x, prev_y):
+record_file_name = 'manual_records.txt'
+record = []
+
+def file_len(fname):
+    i = -1
+    with open(fname) as f:
+        for i, l in enumerate(f):
+            pass
+    if i > 0: 
+        return i + 1, len(l.split('), '))   
+    else: 
+        return -1, -1
+
+entries, frames = file_len(record_file_name)
+print('entries = %.2f, frames=%.2f'%(entries, frames))
+has_previous_log = False
+if entries > 0:
+    has_previous_log = True
+    points = np.zeros((entries, frames,2))
+    file  = open(record_file_name, 'r')
+    for i, line in enumerate(file):
+        for j, pt in enumerate(line.split('), ')): 
+            x,y = int(pt[1:4]), int(pt[6:9])
+            points[i][j] = [x,y]
+else: 
+    points = []
+
+def get_coordinate(File, prev_file, prev_x, prev_y, frame_num):
     
     global x, y
     global green, red
+    global record, points
+    global has_previous_log
+
     x, y = 0, 0
     if prev_file != None: 
         prev_img = cv.imread(prev_file)
@@ -37,12 +69,23 @@ def get_coordinate(File, prev_file, prev_x, prev_y):
 
     #adding the image
     # File = askopenfilename(parent=root, initialdir="../original",title='Choose an image.')
-    img = ImageTk.PhotoImage(Image.open(File))
+    
+    im_temp = Image.open(File)
+    im_temp = im_temp.resize((1200, 900), Image.ANTIALIAS)
+    img = ImageTk.PhotoImage(im_temp)
     canvas.create_image(0,0,image=img,anchor="nw")
     canvas.config(scrollregion=canvas.bbox(ALL))
 
     # Circle around previous_xy
-    canvas.create_rectangle(prev_x-2, prev_y-2, prev_x+2, prev_y+2, outline=green)
+    canvas.create_rectangle(prev_x-3, prev_y-3, prev_x+3, prev_y+3, outline=green)
+    for item in record: 
+        xx,yy = item[0], item[1]
+        canvas.create_rectangle(xx-2, yy-2, xx+2, yy+2, outline=red)
+    if has_previous_log:
+        for item in points[:, frame_num]:
+            xx,yy = item[0], item[1]
+            canvas.create_rectangle(xx-2, yy-2, xx+2, yy+2, outline=green)
+
 
     #function to be called when mouse is clicked
     def printcoords(event):
@@ -67,27 +110,31 @@ def get_recording():
     # display_prev(File, x, y)
     # pdb.set_trace()
 
+    global record 
     ori_path = '../images/original/'
     # ori_path = 'speckles only/'
     ori_files = glob.glob(ori_path+"*.jpg")
     ori_files = sorted(ori_files)
-
-    record = []
+    
     x, y = 0,0
     i = 0
-    x,y = get_coordinate(ori_files[i], None, x, y)
-    for i in range(1, 6):
+    x,y = get_coordinate(ori_files[i], None, x, y, 0)
+    for i in range(0, 20):
         print(ori_files[i])
-        x,y = get_coordinate(ori_files[i], ori_files[i-1], x, y)
+        if i == 0:
+            x,y = get_coordinate(ori_files[i], None, x, y, i)
+        else:
+            x,y = get_coordinate(ori_files[i], ori_files[i-1], x, y, i)
         record.append((x, y))
 
     print(record)
     return record
 
 def record_one_speckle():
-    file  = open('manual_records3.txt', 'a')
+    file  = open(record_file_name, 'a')
     record = get_recording()
     file.write(str(record)[1:-1]+'\n')
-    # pdb.set_trace()
+    
+
 
 record_one_speckle()
