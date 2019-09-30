@@ -34,9 +34,6 @@ if with_warp:
     warp_x = np.load('python_hierachy_block_matching/warpx.npy')
     warp_y = np.load('python_hierachy_block_matching/warpy.npy')
 
-
-
-
 border = 20
 delaunay_color = (255, 255, 0)
 big_triangle_color = (255, 0, 0)
@@ -231,7 +228,7 @@ radial = np.zeros((pts.shape[1]-1, warp.shape[0], warp.shape[1]))
 circumferential = np.zeros((pts.shape[1]-1, warp.shape[0], warp.shape[1]))
 # pdb.set_trace()
 ## Get displacement and update key
-pdb.set_trace()
+# pdb.set_trace()
 for i in range(1, pts.shape[1]): # for each frame
     for j in range(pts.shape[0]):
         point = (pts[j, i, 0], pts[j, i, 1])

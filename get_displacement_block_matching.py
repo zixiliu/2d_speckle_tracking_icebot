@@ -11,13 +11,20 @@ from skimage.feature import peak_local_max
 ## Global variables
 ################################################################################
 # ori_path = 'images/original/'
-ori_path = 'images/simulated/'
-save_img_path = 'images/block_matching/displacement/'
-save_path = 'images/block_matching/'
+ori_path = '/Users/zixiliu/my_git_repos/my_howe_lab/Echos/Zeo file/IM_1637_copy_jpg/'
+# ori_path = '/Users/zixiliu/my_git_repos/my_howe_lab/Echos/Zeo file/images/'
+# ori_path = 'images/simulated/'
+# save_img_path = 'images/block_matching/displacement/'
+save_img_path = ori_path+'tracking/'
+
+# save_path = 'images/block_matching/'
+save_path = save_img_path
+
 # ori_path='validation_simulation/'
 # ori_path = '/Users/zixiliu/my_git_repos/2d_speckle_tracking_icebot/images/warped/'
 # the_ori_path = '/Users/zixiliu/my_git_repos/2d_speckle_tracking_icebot/images/original/'
-the_ori_path = '/Users/zixiliu/my_git_repos/2d_speckle_tracking_icebot/images/simulated/'
+the_ori_path = ori_path
+# the_ori_path = '/Users/zixiliu/my_git_repos/2d_speckle_tracking_icebot/images/simulated/'
 # save_img_path = ori_path + 'displacement/'
 # save_path = ori_path
 
@@ -26,7 +33,7 @@ ori_files = sorted(ori_files)
 with_warp = False
 blur_window_size = 9
 border = 20
-to_remove_outlier= False
+to_remove_outlier= True
 plot_center_pt = False
 
 # starting_img_num = 4065 #4051
@@ -35,8 +42,11 @@ plot_center_pt = False
 # ending_img_num = 19
 # starting_img_num = 4050
 # ending_img_num = 4069
+# starting_img_num = 4060
+# ending_img_num = 4079
 starting_img_num = 1
-ending_img_num = 10
+ending_img_num = 34
+
 
 
 dense_track_grid = False
@@ -55,16 +65,17 @@ if use_groundtruth:
     nframe, endo_npoints, _ = endo.shape
     _, epi_npoints, _ = epi.shape
 
-    # endo_epi = np.zeros((nframe, endo_npoints+epi_npoints, 2))
-    # endo_epi[:,0:endo_npoints,:] = endo
-    # endo_epi[:,endo_npoints::,:] = epi
-    endo_epi = endo
+    endo_epi = np.zeros((nframe, endo_npoints+epi_npoints, 2))
+    endo_epi[:,0:endo_npoints,:] = endo
+    endo_epi[:,endo_npoints::,:] = epi
+    # endo_epi = endo
 
     nframe, npoints, _ = endo_epi.shape
     the_ori_files = glob.glob(ice_path+"original/*.jpg")
     the_ori_files = sorted(the_ori_files)
     groundtruth_files = glob.glob(groundtruth_path+"*.jpg")
     groundtruth_files = sorted(groundtruth_files)
+
 
 ################################################################################
 ## helper functions
@@ -118,8 +129,10 @@ def helper_find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_si
     (next_match_x, next_match_y) = block_match(source, template, method, half_template_size, \
                                     yy_ul, yy_lr, xx_ul, xx_lr, x,y,\
                                     template_yy_ul, template_yy_lr, template_xx_ul, template_xx_lr)
+    if next_match_x == -1:
+        (next_match_x, next_match_y) = x, y
     if next_match_x == np.Inf:
-        print("no match!")
+        # print("no match!")
         return np.Inf, np.Inf
     return next_match_x, next_match_y
 
@@ -128,82 +141,95 @@ def helper_find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_si
 def helper_get_tracking_points(f):
     global with_warp, border
 
-    if use_groundtruth==False:
-        downby = 8 # 4
-        downby_init = downby
-        if downby % 2 != 0:
-            print("Variable downby must be a multiply of 2!")
-            raise ValueError
+    # if use_groundtruth==False:
+    #     downby = 16 #8 # 4
+    #     downby_init = downby
+    #     if downby % 2 != 0:
+    #         print("Variable downby must be a multiply of 2!")
+    #         raise ValueError
 
-        img = cv.imread(f)
-        gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-        if with_warp:
-            gray_warp = cv.remap(gray, warp_x, warp_y, cv.INTER_LINEAR)
-            gray_warp = cv.copyMakeBorder(gray_warp, border, border, border, border, cv.BORDER_CONSTANT)
-            img2 = cv.pyrDown(gray_warp)
-        else:
-            img2 = cv.pyrDown(gray)
+    #     img = cv.imread(f)
+    #     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    #     if with_warp:
+    #         gray_warp = cv.remap(gray, warp_x, warp_y, cv.INTER_LINEAR)
+    #         gray_warp = cv.copyMakeBorder(gray_warp, border, border, border, border, cv.BORDER_CONSTANT)
+    #         img2 = cv.pyrDown(gray_warp)
+    #     else:
+    #         img2 = cv.pyrDown(gray)
 
-        while downby > 2:
-            downby = downby / 2
-            img2 = cv.pyrDown(img2)
+    #     while downby > 2:
+    #         downby = downby / 2
+    #         img2 = cv.pyrDown(img2)
 
-        img2Gauss = cv.GaussianBlur(img2,(11,11),0)
-        _, thresh = cv.threshold(img2Gauss,50,1,cv.THRESH_BINARY)
-        # _, thresh = cv.threshold(img2,60,1,cv.THRESH_BINARY)
-
-
-
-        # plt.figure()
-        # plt.subplot(131)
-        # plt.imshow(img2, cmap='gray')
-        # plt.subplot(132)
-        # temp = cv.GaussianBlur(img2,(11,11),0)
-        # plt.imshow(temp, cmap='gray')
-        # plt.subplot(133)
-        # _, thresh2 = cv.threshold(temp,50,1,cv.THRESH_BINARY)
-        # plt.imshow(thresh2, cmap='gray')
-        # plt.show()
-        # pdb.set_trace()
-
-        if dense_track_grid:
-            coordinates = []
-            for y in range(3, thresh.shape[0]-3+1):
-                for x in range(3, thresh.shape[1]-3+1):
-                        coordinates.append([x*downby_init, y*downby_init])
-        else:
-            coordinates = []
-            for y in range(thresh.shape[0]):
-                for x in range(thresh.shape[1]):
-                    if thresh[y,x] > 0:
-                        coordinates.append([x*downby_init, y*downby_init])
+    #     img2Gauss = cv.GaussianBlur(img2,(11,11),0)
+    #     _, thresh = cv.threshold(img2Gauss,50,1,cv.THRESH_BINARY)
+    #     # _, thresh = cv.threshold(img2,60,1,cv.THRESH_BINARY)
 
 
-        neighbors = {} # Get neighbors by index
-        # d_sq = 128 # distance thresh
-        d_sq = 1600 # distance thresh
-        for i, xy in enumerate(coordinates):
-            x, y = xy[0], xy[1]
-            neighbors[i] = []
-            for j in range(len(coordinates)):
-                next_xy = coordinates[j]
-                next_x, next_y = next_xy[0], next_xy[1]
-                if (x-next_x)**2 + (y-next_y)**2 <= d_sq:
-                    if ((x==next_x) & (y==next_y)):
-                        pass
-                    else:
-                        neighbors[i].append(j)
-    else:
-        ice_path = '/Users/zixiliu/my_git_repos/ICE_segmentation/'
-        global endo_epi
-        nframe, npoints, _ = endo_epi.shape
-        coordinates = endo_epi[0,:,:]
-        neighbors = {}
+
+    #     # plt.figure()
+    #     # plt.subplot(131)
+    #     # plt.imshow(img2, cmap='gray')
+    #     # plt.subplot(132)
+    #     # temp = cv.GaussianBlur(img2,(11,11),0)
+    #     # plt.imshow(temp, cmap='gray')
+    #     # plt.subplot(133)
+    #     # _, thresh2 = cv.threshold(temp,50,1,cv.THRESH_BINARY)
+    #     # plt.imshow(thresh2, cmap='gray')
+    #     # plt.show()
+    #     # pdb.set_trace()
+
+    #     if dense_track_grid:
+    #         coordinates = []
+    #         for y in range(3, thresh.shape[0]-3+1):
+    #             for x in range(3, thresh.shape[1]-3+1):
+    #                     coordinates.append([x*downby_init, y*downby_init])
+    #     else:
+    #         coordinates = []
+    #         for y in range(thresh.shape[0]):
+    #             for x in range(thresh.shape[1]):
+    #                 if thresh[y,x] > 0:
+    #                     coordinates.append([x*downby_init, y*downby_init])
+
+
+    #     neighbors = {} # Get neighbors by index
+    #     # d_sq = 128 # distance thresh
+    #     d_sq = 1600 # distance thresh
+    #     for i, xy in enumerate(coordinates):
+    #         x, y = xy[0], xy[1]
+    #         neighbors[i] = []
+    #         for j in range(len(coordinates)):
+    #             next_xy = coordinates[j]
+    #             next_x, next_y = next_xy[0], next_xy[1]
+    #             if (x-next_x)**2 + (y-next_y)**2 <= d_sq:
+    #                 if ((x==next_x) & (y==next_y)):
+    #                     pass
+    #                 else:
+    #                     neighbors[i].append(j)
+    # else:
+    #     ice_path = '/Users/zixiliu/my_git_repos/ICE_segmentation/'
+    #     global endo_epi
+    #     nframe, npoints, _ = endo_epi.shape
+    #     coordinates = endo_epi[0,:,:]
+    #     # coordinates = np.load(ice_path+'track_pts.npy')
+    #     print(coordinates)
+    #     # pdb.set_trace()
+    #     neighbors = {}
+    ice_path = '/Users/zixiliu/my_git_repos/ICE_segmentation/'
+    # coordinates = np.load(ice_path+'track_pts.npy')
+    # coordinates = [[503, 414],[535, 528],[557, 639],[628, 725],\
+    #     [745, 745],[812, 652],[823, 533],[818, 416],[775, 297]]
+    # coordinates = [[335, 276],[356, 352],[371, 426],[418, 483],\
+    #     [496, 496],[541, 434],[548, 355],[545, 277],[516, 198]]
+    # coordinates = [[428, 280], [469, 453], [544, 593], [691, 626], [771, 496], [776, 316], [722, 152]]
+    coordinates = [[334, 279], [357, 393], [408, 473], [498, 493], [547, 414], [546, 310], [517, 201]]
+
+    neighbors = {}
 
     # coordinates = []
     # coordinates.append([70, 90])
     # neighbors = {}
-
+    print("Finished getting coordinates.")
     # pdb.set_trace()
     return coordinates, neighbors
 
@@ -221,13 +247,17 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
         # x, y = x*640/1200, y*640/1200
         xys[i] = [x, y]
 
-    xy_list = np.zeros((len(xys), 28, 2))
+    num_frames = ending_img_num - starting_img_num + 1
+    xy_list = np.zeros((len(xys), num_frames, 2))
     xy_list[:,0,:] = xys
-    center_pt = np.zeros((28, 2))
+    center_pt = np.zeros((num_frames, 2))
     # pdb.set_trace()
 
-
     for ii, i in enumerate(range(starting_img_num,ending_img_num)):
+        # if i < 9:
+        #     f1 = '0'+str(i)+'.jpg'
+        #     f2 = '0'+str(i+1)+'.jpg'
+        # else:
         f1 = str(i)+'.jpg'
         f2 = str(i+1)+'.jpg'
         print('----\n'+f2)
@@ -235,8 +265,6 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
 
         ori_file = ori_path + f2
         ori_prev = the_ori_path + f1
-
-        # pdb.set_trace()
 
         prev_img = cv.imread(ori_prev)
         prev_gray = cv.cvtColor(prev_img,cv.COLOR_BGR2GRAY)
@@ -271,15 +299,16 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
                 x, y = int(xy_list[j, ii, 0]), int(xy_list[j, ii, 1])
                 # x, y = int(xy_list[j, 0, 0]), int(xy_list[j, 0, 1])
             # x, y = int(endo[ii,j,0]), int(endo[ii,j,1])
-
+            # pdb.set_trace()
             next_match_x, next_match_y = helper_find_match_gaussian_blur(prev_gray, next_gray, x, y, half_template_size, half_source_size, method)
 
             if next_match_x == np.Inf:
                 # print("TODO: handle no match cases")
                 next_match_x, next_match_y = x, y
 
-            x, y = next_match_x, next_match_y
-            xy_list[j,ii+1,:] = [x, y]
+            # x, y = next_match_x, next_match_y
+            # xy_list[j,ii+1,:] = [x, y]
+            xy_list[j,ii+1,:] = [next_match_x, next_match_y]
 
 
         ## Warpped example
@@ -288,7 +317,11 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
         # groundtruth_img2 = groundtruth_img.copy()
         ## END warpped example
 
-
+        if ii == 0:
+            for j in range(num_pts):
+                x, y = xy_list[j,0,0], xy_list[j,0,1]
+                cv.circle(prev_img, (int(x), int(y)), 4, (255, 0, 0))
+            plt.imsave(save_img_path+f1, prev_img)
 
         for j in range(num_pts):
             ## Smooth outlier
@@ -297,31 +330,34 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
             if to_remove_outlier:
                 v_x, v_y = (xy_list[j,ii+1,0]-xy_list[j,ii,0])/40., \
                             (xy_list[j,ii+1,1]-xy_list[j,ii,1])/40.
-                neighbor_idxs = neighbors[j]
-                if len(neighbor_idxs) > 0:
+                try:
+                    neighbor_idxs = neighbors[j]
+                    if len(neighbor_idxs) > 0:
 
-                    neighbor_xys = []
-                    neighbor_vel = []
-                    for idx in neighbor_idxs:
-                        neighbor_xys.append(xy_list[idx,ii+1,:])
-                        neighbor_vel.append((xy_list[idx,ii+1,:] - xy_list[idx,ii,:])/40.)
-                    # if (ii == 3) & (xy_list[j,ii+1,0] > 30) & (xy_list[j,ii+1,1] > 30):
-                    #     pdb.set_trace()
+                        neighbor_xys = []
+                        neighbor_vel = []
+                        for idx in neighbor_idxs:
+                            neighbor_xys.append(xy_list[idx,ii+1,:])
+                            neighbor_vel.append((xy_list[idx,ii+1,:] - xy_list[idx,ii,:])/40.)
+                        # if (ii == 3) & (xy_list[j,ii+1,0] > 30) & (xy_list[j,ii+1,1] > 30):
+                        #     pdb.set_trace()
 
-                    r = helper_get_normalized_residual(x,y, v_x, v_y, neighbor_xys, neighbor_vel)
-                    if r > 1.5: # outlier!
-                        if make_plots:
-                            cv.circle(next_img, (int(x), int(y)), 3, (0, 255, 255))
+                        r = helper_get_normalized_residual(x,y, v_x, v_y, neighbor_xys, neighbor_vel)
+                        if r > 1.5: # outlier!
+                            if make_plots:
+                                cv.circle(next_img, (int(x), int(y)), 3, (0, 255, 255))
 
-                        vxy = np.array(neighbor_vel).mean(axis=0)
-                        xy_list[j,ii+1,:] = vxy*40. + xy_list[j,ii,:]
-                        x, y = xy_list[j,ii+1,0], xy_list[j,ii+1,1]
-                        # x, y = xy[0], xy[1]
-                        # xy_list[j,ii+1,:] = [x, y]
-                        print('outlier!')
-                        # print(j, [x,y])
+                            vxy = np.array(neighbor_vel).mean(axis=0)
+                            xy_list[j,ii+1,:] = vxy*40. + xy_list[j,ii,:]
+                            x, y = xy_list[j,ii+1,0], xy_list[j,ii+1,1]
+                            # x, y = xy[0], xy[1]
+                            # xy_list[j,ii+1,:] = [x, y]
+                            # print('outlier!')
+                            # print(j, [x,y])
 
-                        outlier=True
+                            outlier=True
+                except KeyError:
+                    pass
             # # Plot
             # first_x, first_y = xy_list[j, 0, 0], xy_list[j, 0, 1]
             # cv.circle(next_img, (int(first_x), int(first_y)), 3, (0, 255, 0))
@@ -329,26 +365,31 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
                 # prev_x, prev_y = int(endo_epi[ii,j,0]), int(endo_epi[ii,j,1]) #
                 if dense_track_grid:
                     prev_x, prev_y = int(xy_list[j, 0, 0]), int(xy_list[j, 0, 1])
-                    print([x,y])
+                    # print([x,y])
                 else:
                     prev_x, prev_y = int(xy_list[j, ii, 0]), int(xy_list[j, ii, 1])
                     # prev_x, prev_y = int(xy_list[j, 0, 0]), int(xy_list[j, 0, 1])
 
-
                 cv.circle(prev_img, (int(prev_x), int(prev_y)), 3, (0, 255, 0))
-                cv.arrowedLine(next_img, (int(prev_x), int(prev_y)), (int(x), int(y)), (255,255,0), 1, tipLength=0.3)
-
+                try:
+                    cv.arrowedLine(next_img, (int(prev_x), int(prev_y)), (int(x), int(y)), (255,255,0), 1, tipLength=0.3)
+                except:
+                    print(x, y)
+                    pdb.set_trace()
                 if use_groundtruth:
-                    cv.arrowedLine(groundtruth_img, (int(prev_x), int(prev_y)), (int(x), int(y)), (255,0,0), 1, tipLength=0.3)
-                    cv.circle(groundtruth_img, (int(endo_epi[ii+1,j,0]), int(endo_epi[ii+1,j,1])), 3, (0, 255, 0))
-                    cv.arrowedLine(next_img, (int(endo_epi[ii,j,0]), int(endo_epi[ii,j,1])), (int(endo_epi[ii+1,j,0]), int(endo_epi[ii+1,j,1])), (0,255,0), 1, tipLength=0.3)
+                    cv.arrowedLine(groundtruth_img, (int(prev_x), int(prev_y)), (int(x), int(y)), (255,0,0), 2, tipLength=0.3)
+                    cv.circle(groundtruth_img, (int(endo_epi[ii+1,j,0]), int(endo_epi[ii+1,j,1])), 1, (0, 255, 0))
+                    cv.arrowedLine(next_img, (int(endo_epi[ii,j,0]), int(endo_epi[ii,j,1])), (int(endo_epi[ii+1,j,0]), int(endo_epi[ii+1,j,1])), (0,255,0), 2, tipLength=0.3)
                     # cv.arrowedLine(groundtruth_img, (int(endo_epi[ii,j,0]), int(endo_epi[ii,j,1])), (int(endo_epi[ii+1,j,0]), int(endo_epi[ii+1,j,1])), (0,255,0), 1, tipLength=0.3)
 
                 if outlier==True:
                     cv.circle(next_img, (int(x), int(y)), 2, (0, 255, 0))
                     cv.arrowedLine(next_img, (int(prev_x), int(prev_y)), (int(x), int(y)), (0,255,0), 1, tipLength=0.3)
                 else:
-                    cv.circle(next_img, (int(x), int(y)), 1, (255, 0, 0))
+                    cv.circle(next_img, (int(x), int(y)), 4, (255, 0, 0))
+                    # cv.circle(next_img, (prev_x, prev_y), 3, (255, 0, 0))
+                    # if (abs(x-prev_x) != 0) or (abs(y-prev_y) != 0):
+                    #     cv.circle(next_img, (int(x), int(y)), 3, (0, 255, 0))
                     if use_groundtruth:
                         cv.circle(groundtruth_img, (int(x), int(y)), 3, (255, 255, 0))
 
@@ -382,15 +423,22 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
         # center_pt[ii, :] = [int((xy_list[51,ii+1,0]+xy_list[89,ii+1,0]+xy_list[90,ii+1,0]+xy_list[229,ii+1,0])/4), \
         #             int((xy_list[51,ii+1,1]+xy_list[89,ii+1,1]+xy_list[90,ii+1,1]+xy_list[229,ii+1,1])/4)]
 
-
         if make_plots:
             if with_warp:
                 plt.subplot(133)
             # cv.rectangle(next_img, (0,0), (3,10), (0,255,0),1)
+
+            # for temp in range(int(xy_list.shape[0]/2)):
+            #     cv.line(next_img, (int(xy_list[temp,ii,0]), int(xy_list[temp,ii,1])), (int(xy_list[-1*temp-1,ii,0]), int(xy_list[-1*temp-1,ii,1])), (255,0,0))
+
+            mid_pt = (int((xy_list[0,ii,0] + xy_list[-1,ii,0])/2), int((xy_list[0,ii,1] + xy_list[-1,ii,1])/2))
+            # cv.line(next_img, mid_pt, (int(xy_list[4,ii,0]), int(xy_list[4,ii,1])), (255,0,0))
+            cv.line(next_img, mid_pt, (int(xy_list[3,ii+1,0]), int(xy_list[3,ii+1,1])), (255,0,0))
             plt.imshow(next_img)
 
             plt.tight_layout()
-            plt.savefig(save_img_path+f2)
+            # plt.savefig(save_img_path+f2)
+            plt.imsave(save_img_path+f2, next_img)
             ## warp example
 
             if use_groundtruth:
@@ -411,6 +459,7 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
                 plt.tight_layout()
                 plt.savefig(save_img_path+f2)
             # pdb.set_trace()
+            plt.close()
 
 
 
@@ -439,9 +488,11 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
         next_gray = cv.copyMakeBorder(next_gray, border, border, border, border, cv.BORDER_CONSTANT)
         next_img = cv.cvtColor(next_gray,cv.COLOR_GRAY2RGB)
 
-    plt.figure(figsize=(14,12))
-    plt.subplot(121)
-    plt.imshow(next_img)
+    # plt.figure(figsize=(14,12))
+    plt.figure()
+    # plt.subplot(121)
+    # plt.imshow(next_img)
+
 
     distances = []
 
@@ -453,24 +504,29 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
         if next_match_x != np.Inf:
 
             if make_plots:
-                prev_x, prev_y = xy_list[j, 0, 0], xy_list[j, 0, 1]
-                cv.arrowedLine(next_img, (int(prev_x), int(prev_y)), \
-                            (int(next_match_x), int(next_match_y)), (255,0,0), 1, tipLength=0.3)
+                # cv.arrowedLine(next_img, (x, y), \
+                            # (int(next_match_x), int(next_match_y)), (255,255,0), 1, tipLength=0.3)
 
-                cv.circle(next_img, (int(next_match_x), int(next_match_y)), 1, (255, 255, 0))
+                # cv.circle(next_img, (int(next_match_x), int(next_match_y)), 1, (255, 255, 0))
+                cv.circle(next_img, (x, y), 3, (255, 255, 0))
+                cv.circle(next_img, (int(xy_list[j, ii, 0]), int(xy_list[j, ii, 1])), 3, (255, 0, 0))
+                cv.arrowedLine(next_img, (x,y), (int(xy_list[j, ii, 0]), int(xy_list[j, ii, 1])), (0,255,0), 1, tipLength=0.3)
+                # cv.arrowedLine(next_img, (int(xy_list[j, ii, 0]), int(xy_list[j, ii, 1])), (int(next_match_x), int(next_match_y)), (0,255,0), 1, tipLength=0.3)
 
-                cv.circle(next_img, (int(xy_list[j, ii, 0]), int(xy_list[j, ii, 1])), 1, (255, 0, 0))
-                cv.arrowedLine(next_img, (int(xy_list[j, ii, 0]), int(xy_list[j, ii, 1])), (int(next_match_x), int(next_match_y)), (0,255,0), 1, tipLength=0.3)
+                # pdb.set_trace()
+                # for temp in range(13):
+                #     cv.arrowedLine(next_img, (x[temp+6],y[temp+6]), (), (0,255,0), 1, tipLength=0.3)
 
             distances.append(np.sqrt((int(xy_list[j, ii, 0])- next_match_x)**2 + \
                                 (int(xy_list[j, ii, 1])-next_match_y)**2))
 
 
     if make_plots:
-        plt.subplot(122)
-        plt.imshow(next_img)
-        plt.savefig(save_img_path+str(starting_img_num)+'_'+str(ending_img_num)+'.jpg')
-
+        # plt.subplot(122)
+        # plt.imshow(next_img)
+        # plt.title('Drift \n green circles: tracked points after a cardiac cycle\n yellow cirlces: points to track \n arrow: points after a cycle pointing to direct track')
+        # plt.savefig(save_img_path+str(starting_img_num)+'_'+str(ending_img_num)+'.jpg')
+        plt.imsave(save_img_path+str(starting_img_num)+'_'+str(ending_img_num)+'.jpg', next_img)
     distances = np.array(distances)
     file  = open(save_path + 'error.txt', 'a')
     file.write('Distances between tracked location and direct step location in pixel:\n')
