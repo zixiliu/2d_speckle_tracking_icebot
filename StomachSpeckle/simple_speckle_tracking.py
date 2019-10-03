@@ -1,33 +1,31 @@
 import cv2 as cv
 import pdb
 import glob
-
 import numpy as np
-# from skimage.feature import peak_local_max
-from helper_get_pts import manual_select_and_save, helper_record_speckles_in_one_frame
-
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
-from block_matching import block_match
-from trace_trajectory import find_match
 import os
+# Local functions
+from block_matching import block_match
 from make_movie import jpg_to_mp4
+from helper_get_pts import manual_select_and_save, helper_record_speckles_in_one_frame
 
 ################################################################################
 ## Global variables
 ################################################################################
 # ori_path = '/Users/zixiliu/my_git_repos/my_howe_lab/Echos/Zeo file/IM_1637_copy_jpg/'
-# ori_path = '/Users/zixiliu/Documents/Daichi/20190926_Images/20190621104753_S8_probe/'
+ori_path = '/Users/zixiliu/Documents/Daichi/20190926_Images/20190621104753_S8_probe/'
 # ori_path = '/Users/zixiliu/Documents/Daichi/20190926_Images/20190827195604_Rest/'
-ori_path = '/Users/zixiliu/Documents/Daichi/20190926_Images/20190827200331_Fear/'
+# ori_path = '/Users/zixiliu/Documents/Daichi/20190926_Images/20190827200331_Fear/'
 save_img_path = ori_path+'tracking/'
 try:
     os.mkdir(save_img_path)
 except OSError:
     pass
 
-manually_select_new_pts = False
+manually_select_new_pts = True
+
 ori_files = glob.glob(ori_path+"*.jpg")
 ori_files = sorted(ori_files)
 blur_window_size = 9
@@ -79,9 +77,6 @@ def helper_get_tracking_points(f):
     coordinates = np.load(save_file)
     neighbors = {}
 
-    # import matplotlib.pyplot as plt
-    from python_hierachy_block_matching.block_matching import block_match
-    from python_hierachy_block_matching.trace_trajectory import find_match
     return coordinates, neighbors
 
 ################################################################################
@@ -90,7 +85,7 @@ def helper_get_tracking_points(f):
 def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_size = 23):
     global blur_window_size
     # xys, neighbors = helper_get_tracking_points(ori_path + str(starting_img_num) + '.jpg')
-    xys, neighbors = helper_get_tracking_points(ori_files[0])
+    xys, _ = helper_get_tracking_points(ori_files[0])
     method = cv.TM_CCORR_NORMED # Other methods: cv.TM_CCOEFF_NORMED #cv.TM_CCORR_NORMED
 
     num_pts = len(xys)
@@ -101,7 +96,6 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
     num_frames = ending_img_num - starting_img_num + 1
     xy_list = np.zeros((len(xys), num_frames, 2))
     xy_list[:,0,:] = xys
-    center_pt = np.zeros((num_frames, 2))
 
     for ii, i in enumerate(range(starting_img_num,ending_img_num)):
         f1 = str(i)+'.jpg'
@@ -153,8 +147,6 @@ def gaussian_blur_bm(make_plots = False, half_template_size = 16, half_source_si
             plt.imsave(save_img_path+f1, prev_img)
 
     np.save(save_img_path + 'tracked_pts.npy', xy_list)
-    np.save(save_img_path + 'neighbors.npy', neighbors)
-    np.save(save_img_path + 'center_pt.npy', center_pt)
 
     ## make a movie
     jpg_to_mp4(save_img_path, save_img_path+'tracked.mp4')

@@ -61,7 +61,8 @@ def helper_record_speckles_in_one_frame(img_file):
     pts_to_track = []
     global pts_to_track
 
-    for i in range(20): # Get 9 points
+    # Get 20 points
+    for i in range(20): 
         x,y = helper_get_coordinate(img_file)
 
     return pts_to_track
